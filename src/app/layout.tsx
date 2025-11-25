@@ -19,20 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="scroll-smooth">
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
         <Providers>
           <div className="relative flex min-h-screen flex-col">
             <Navbar />
-            <div className="flex-1 flex items-center">
-              <div className="container w-full flex-1 items-start md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
-                <Sidebar />
-                <main className="relative py-6 lg:py-8 w-full flex justify-center">
-                  <div className="w-full">
-                    {children}
-                  </div>
-                </main>
-              </div>
+            <div className="flex-1 flex">
+              <Sidebar />
+              <main className="relative w-full min-w-0 md:ml-64">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+                  {children}
+                </div>
+              </main>
             </div>
           </div>
         </Providers>

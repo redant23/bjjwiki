@@ -9,7 +9,12 @@ export async function GET(
   const params = await props.params;
   try {
     await dbConnect();
-    const technique = await Technique.findById(params.id);
+    const technique = await Technique.findById(params.id)
+      .populate('parentId', 'name slug')
+      .populate('childrenIds', 'name slug type primaryRole')
+      .populate('sweepsFromHere', 'name slug')
+      .populate('submissionsFromHere', 'name slug')
+      .populate('escapesFromHere', 'name slug');
 
     if (!technique) {
       return NextResponse.json(
@@ -19,7 +24,7 @@ export async function GET(
     }
 
     return NextResponse.json({ success: true, data: technique });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch technique' },
       { status: 500 }
@@ -35,22 +40,72 @@ export async function PUT(
   try {
     await dbConnect();
     const body = await request.json();
+    const id = params.id;
 
-    // Instead of updating directly, we should create a new pending version
-    // But for admin updates or status changes, we might update directly.
-    // For now, let's assume this is a direct update (admin) or we handle the logic here.
-    // Requirement says: "Existing technique modification: Create NEW document with status: pending"
+    const currentTechnique = await Technique.findById(id);
+    if (!currentTechnique) {
+      return NextResponse.json(
+        { success: false, error: 'Technique not found' },
+        { status: 404 }
+      );
+    }
 
-    // If it's a contribution update (not admin), we should probably use POST /api/techniques with original_technique_id
-    // But if we use PUT here, we can implement that logic too.
+    // Handle Parent Change
+    if (body.parentId && body.parentId !== currentTechnique.parentId?.toString()) {
+      // 1. Remove from old parent
+      if (currentTechnique.parentId) {
+        await Technique.findByIdAndUpdate(currentTechnique.parentId, {
+          $pull: { childrenIds: id }
+        });
+      }
 
-    // Let's implement direct update for now, assuming admin usage or simple update.
-    // We will handle the "contribution flow" in the client or a specific service method.
+      // 2. Add to new parent
+      const newParent = await Technique.findById(body.parentId);
+      if (newParent) {
+        await Technique.findByIdAndUpdate(body.parentId, {
+          $push: { childrenIds: id }
+        });
 
-    const technique = await Technique.findByIdAndUpdate(params.id, body, {
+        // 3. Update level and pathSlugs
+        body.level = (newParent.level || 1) + 1;
+        body.pathSlugs = [...(newParent.pathSlugs || []), newParent.slug];
+
+        // TODO: Recursively update children's pathSlugs/level if needed
+        // For now, we assume this is a leaf node or user accepts inconsistency until re-save
+      }
+    } else if (body.parentId === null && currentTechnique.parentId) {
+      // Moved to root
+      await Technique.findByIdAndUpdate(currentTechnique.parentId, {
+        $pull: { childrenIds: id }
+      });
+      body.level = 1;
+      body.pathSlugs = [];
+    }
+
+    const technique = await Technique.findByIdAndUpdate(id, body, {
       new: true,
       runValidators: true,
     });
+
+    return NextResponse.json({ success: true, data: technique });
+  } catch (error) {
+    console.error('PUT Error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to update technique' },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  const params = await props.params;
+  try {
+    await dbConnect();
+    const id = params.id;
+    const technique = await Technique.findById(id);
 
     if (!technique) {
       return NextResponse.json(
@@ -59,11 +114,30 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json({ success: true, data: technique });
+    // Remove from parent's childrenIds
+    if (technique.parentId) {
+      await Technique.findByIdAndUpdate(technique.parentId, {
+        $pull: { childrenIds: id }
+      });
+    }
+
+    // Optional: Handle children of this technique (orphan them or delete them?)
+    // For now, let's just orphan them (set parentId to null)
+    if (technique.childrenIds && technique.childrenIds.length > 0) {
+      await Technique.updateMany(
+        { _id: { $in: technique.childrenIds } },
+        { $set: { parentId: null, level: 1, pathSlugs: [] } }
+      );
+    }
+
+    await technique.deleteOne();
+
+    return NextResponse.json({ success: true, data: {} });
   } catch (error) {
+    console.error('DELETE Error:', error);
     return NextResponse.json(
-      { success: false, error: 'Failed to update technique' },
-      { status: 400 }
+      { success: false, error: 'Failed to delete technique' },
+      { status: 500 }
     );
   }
 }

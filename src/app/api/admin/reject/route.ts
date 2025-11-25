@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, message: 'Technique rejected and deleted' });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { success: false, error: 'Failed to reject technique' },
       { status: 500 }
