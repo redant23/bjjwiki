@@ -12,14 +12,24 @@ export async function GET(request: Request) {
   try {
     await dbConnect();
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
+    const main_category = searchParams.get('main_category');
+    const sub_category = searchParams.get('sub_category');
+    const detail_category = searchParams.get('detail_category');
     const status = searchParams.get('status') || 'approved';
     const search = searchParams.get('search');
 
     const query: any = { status };
 
-    if (category) {
-      query.category = category;
+    if (main_category) {
+      query.main_category = main_category;
+    }
+
+    if (sub_category) {
+      query.sub_category = sub_category;
+    }
+
+    if (detail_category) {
+      query.detail_category = detail_category;
     }
 
     if (search) {
@@ -27,6 +37,9 @@ export async function GET(request: Request) {
         { name: { $regex: search, $options: 'i' } },
         { alt_names: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
+        { main_category: { $regex: search, $options: 'i' } },
+        { sub_category: { $regex: search, $options: 'i' } },
+        { detail_category: { $regex: search, $options: 'i' } },
       ];
     }
 

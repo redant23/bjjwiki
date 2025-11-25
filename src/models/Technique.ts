@@ -6,7 +6,15 @@ export interface ITechnique extends Document {
   description: string;
   image_url?: string;
   video_url?: string;
-  category: string;
+  main_category: string; // 대분류 (e.g., Guard, Submission, Takedown)
+  sub_category?: string; // 중분류 (e.g., Half Guard, Closed Guard)
+  detail_category?: string; // 하분류 (e.g., Deep Half Guard, Lockdown)
+  situations?: {
+    position: string; // 어떤 포지션에서 사용되는지 (e.g., "클로즈드 가드", "마운트")
+    description?: string; // 해당 상황에서의 설명
+    image_url?: string; // 상황별 이미지 (향후 추가)
+    video_url?: string; // 상황별 영상 (향후 추가)
+  }[];
   status: 'approved' | 'pending' | 'draft';
   is_current_version: boolean;
   original_technique_id?: mongoose.Types.ObjectId;
@@ -21,7 +29,15 @@ const TechniqueSchema: Schema = new Schema(
     description: { type: String, required: true },
     image_url: { type: String },
     video_url: { type: String },
-    category: { type: String, required: true, index: true },
+    main_category: { type: String, required: true, index: true },
+    sub_category: { type: String, index: true },
+    detail_category: { type: String, index: true },
+    situations: [{
+      position: { type: String },
+      description: { type: String },
+      image_url: { type: String },
+      video_url: { type: String },
+    }],
     status: {
       type: String,
       enum: ['approved', 'pending', 'draft'],
