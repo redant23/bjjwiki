@@ -11,11 +11,7 @@ export function Navbar() {
               BJJ Wiki
             </span>
           </Link>
-          <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-            <Link href="/technique/new" className="text-muted-foreground hover:text-foreground transition-colors">
-              기술 추가
-            </Link>
-          </nav>
+
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
           <Link

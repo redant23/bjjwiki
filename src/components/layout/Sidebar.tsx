@@ -158,13 +158,7 @@ export function Sidebar() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Link
-            href="/technique/new"
-            className="flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
-            title="기술 추가"
-          >
-            <Plus className="h-4 w-4" />
-          </Link>
+
         </div>
 
         <nav className="w-full space-y-1">

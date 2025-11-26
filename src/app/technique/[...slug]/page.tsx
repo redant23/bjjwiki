@@ -23,6 +23,7 @@ interface Technique {
   escapesFromHere?: { _id: string; name: { ko: string }; slug: string }[];
   videos: { url: string }[];
   images: { url: string; captionKo?: string; captionEn?: string }[];
+  thumbnailUrl?: string;
   updatedAt: string;
 }
 
@@ -294,6 +295,17 @@ export default function TechniquePage() {
       </nav>
 
       <article className="space-y-8">
+        {/* Thumbnail */}
+        {technique.thumbnailUrl && (
+          <div className="w-full aspect-video md:aspect-[21/9] overflow-hidden rounded-lg border border-border bg-muted/50 relative">
+            <img
+              src={technique.thumbnailUrl}
+              alt={technique.name.ko}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+
         {/* Header */}
         <header className="relative">
           {/* Edit Button */}

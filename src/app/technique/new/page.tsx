@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Upload, X } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -23,7 +24,11 @@ export default function NewTechniquePage() {
     parentId: '', // ObjectId
     videoUrl: '',
     imageUrl: '',
+    roleTags: '', // comma separated
   });
+
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   const [parents, setParents] = useState<{ _id: string, name: { ko: string } }[]>([]);
 
@@ -43,6 +48,30 @@ export default function NewTechniquePage() {
     fetchParents();
   }, []);
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      setThumbnailFile(compressedFile);
+      setPreviewUrl(URL.createObjectURL(compressedFile));
+    } catch (error) {
+      console.error('Image compression failed:', error);
+      setError('이미지 압축에 실패했습니다.');
+    }
+  };
+
+  const removeImage = () => {
+    setThumbnailFile(null);
+    setPreviewUrl('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -50,6 +79,27 @@ export default function NewTechniquePage() {
 
     try {
       // Process data
+      let finalImageUrl = formData.imageUrl;
+
+      // Upload image if exists
+      if (thumbnailFile) {
+        const imageFormData = new FormData();
+        imageFormData.append('file', thumbnailFile);
+        imageFormData.append('usage', 'technique_thumbnail');
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: imageFormData,
+        });
+        const uploadData = await uploadRes.json();
+
+        if (uploadData.success) {
+          finalImageUrl = uploadData.data.url;
+        } else {
+          throw new Error('Image upload failed');
+        }
+      }
+
       const payload = {
         name: formData.name,
         aka: {
@@ -59,12 +109,14 @@ export default function NewTechniquePage() {
         description: formData.description,
         type: formData.type,
         primaryRole: formData.primaryRole,
+        roleTags: formData.roleTags.split(',').map(s => s.trim()).filter(Boolean),
         difficulty: Number(formData.difficulty),
         isCorePosition: formData.isCorePosition,
         positionType: formData.positionType,
         parentId: formData.parentId || null,
         videos: formData.videoUrl ? [{ url: formData.videoUrl }] : [],
-        images: formData.imageUrl ? [{ url: formData.imageUrl }] : [],
+        images: finalImageUrl ? [{ url: finalImageUrl, isPrimary: true }] : [],
+        thumbnailUrl: finalImageUrl,
         status: 'published', // Auto publish for now for ease of testing
       };
 
@@ -168,8 +220,21 @@ export default function NewTechniquePage() {
                   <option value="guard_pass">가드 패스</option>
                   <option value="drill">드릴</option>
                   <option value="transition">트랜지션</option>
+                  <option value="guard_recovery">가드 리커버리</option>
+                  <option value="leg_entry">레그 엔트리</option>
+                  <option value="control_hold">컨트롤/홀드</option>
                 </select>
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Role Tags (쉼표로 구분)</label>
+              <input
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={formData.roleTags}
+                onChange={e => setFormData({ ...formData, roleTags: e.target.value })}
+                placeholder="예: backtake, inversion, framing"
+              />
             </div>
 
             <div className="grid gap-2">
@@ -210,6 +275,47 @@ export default function NewTechniquePage() {
                 value={formData.videoUrl}
                 onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">썸네일 이미지</label>
+              <div className="flex items-center gap-4">
+                {previewUrl ? (
+                  <div className="relative w-40 aspect-video rounded-md overflow-hidden border border-border">
+                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={removeImage}
+                      className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full hover:bg-black/70"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-40 aspect-video rounded-md border border-dashed border-input bg-muted/50">
+                    <span className="text-xs text-muted-foreground">이미지 없음</span>
+                  </div>
+                )}
+                <div className="flex-1">
+                  <label
+                    htmlFor="thumbnail-upload"
+                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    이미지 업로드
+                  </label>
+                  <input
+                    id="thumbnail-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageChange}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    최대 1MB, 자동 압축됨.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
