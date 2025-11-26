@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
-import { ChevronRight, Edit, Save, X } from 'lucide-react';
+import { ChevronRight, Edit, Save, X, Trash2, Upload } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 
 interface Technique {
   _id: string;
@@ -36,11 +39,14 @@ function canEditTechnique(/* user?: User */): boolean {
 
 export default function TechniquePage() {
   const params = useParams();
+  const router = useRouter();
   const [technique, setTechnique] = useState<Technique | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [allTechniques, setAllTechniques] = useState<Technique[]>([]);
   const [breadcrumbPath, setBreadcrumbPath] = useState<{ name: string; slug: string }[]>([]);
 
@@ -51,7 +57,12 @@ export default function TechniquePage() {
     aka: { ko: [] as string[], en: [] as string[] },
     type: 'both' as 'gi' | 'nogi' | 'both',
     parentId: null as string | null,
+    videoUrls: [] as string[],
+    thumbnailUrl: '',
   });
+
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
 
   // params.slug is an array of strings, e.g. ['guard', 'x-guard']
   const slugArray = params.slug as string[];
@@ -106,7 +117,10 @@ export default function TechniquePage() {
               },
               type: detailData.data.type || 'both',
               parentId: detailData.data.parentId?._id || null,
+              videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
+              thumbnailUrl: detailData.data.thumbnailUrl || '',
             });
+            setPreviewUrl(detailData.data.thumbnailUrl || '');
           } else {
             setTechnique(tech); // Fallback
           }
@@ -160,8 +174,69 @@ export default function TechniquePage() {
       },
       type: technique.type as 'gi' | 'nogi' | 'both',
       parentId: technique.parentId?._id || null,
+      videoUrls: technique.videos?.map(v => v.url) || [],
+      thumbnailUrl: technique.thumbnailUrl || '',
     });
+    setThumbnailFile(null);
+    setPreviewUrl(technique.thumbnailUrl || '');
     setIsEditing(false);
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+      const compressedFile = await imageCompression(file, options);
+      setThumbnailFile(compressedFile);
+      setPreviewUrl(URL.createObjectURL(compressedFile));
+    } catch (error) {
+      console.error('Image compression failed:', error);
+      alert('이미지 압축에 실패했습니다.');
+    }
+  };
+
+  const removeImage = () => {
+    setThumbnailFile(null);
+    setPreviewUrl('');
+    setEditForm(prev => ({ ...prev, thumbnailUrl: '' }));
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!technique) return;
+
+    setDeleting(true);
+    setShowDeleteModal(false);
+
+    try {
+      const res = await fetch(`/api/techniques/${technique._id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        router.push('/');
+      } else {
+        alert('삭제 실패: ' + data.error);
+        setDeleting(false);
+      }
+    } catch (err) {
+      alert('삭제 중 오류가 발생했습니다.');
+      console.error(err);
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteModal(false);
   };
 
   const handleSave = async () => {
@@ -169,6 +244,27 @@ export default function TechniquePage() {
 
     setSaving(true);
     try {
+      let finalImageUrl = editForm.thumbnailUrl;
+
+      // Upload image if exists
+      if (thumbnailFile) {
+        const imageFormData = new FormData();
+        imageFormData.append('file', thumbnailFile);
+        imageFormData.append('usage', 'technique_thumbnail');
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: imageFormData,
+        });
+        const uploadData = await uploadRes.json();
+
+        if (uploadData.success) {
+          finalImageUrl = uploadData.data.url;
+        } else {
+          throw new Error('Image upload failed');
+        }
+      }
+
       const res = await fetch(`/api/techniques/${technique._id}`, {
         method: 'PUT',
         headers: {
@@ -189,6 +285,8 @@ export default function TechniquePage() {
           },
           type: editForm.type,
           parentId: editForm.parentId || null,
+          videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
+          thumbnailUrl: finalImageUrl,
         }),
       });
 
@@ -215,7 +313,10 @@ export default function TechniquePage() {
             },
             type: detailData.data.type || 'both',
             parentId: detailData.data.parentId?._id || null,
+            videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
+            thumbnailUrl: detailData.data.thumbnailUrl || '',
           });
+          setPreviewUrl(detailData.data.thumbnailUrl || '');
         }
         setIsEditing(false);
       } else {
@@ -295,192 +396,234 @@ export default function TechniquePage() {
       </nav>
 
       <article className="space-y-8">
-        {/* Thumbnail */}
-        {technique.thumbnailUrl && (
-          <div className="w-full aspect-video md:aspect-[21/9] overflow-hidden rounded-lg border border-border bg-muted/50 relative">
-            <img
-              src={technique.thumbnailUrl}
-              alt={technique.name.ko}
-              className="w-full h-full object-cover"
-            />
+        {/* Header Area */}
+        <header className="relative mb-8">
+          {/* Action Buttons */}
+          <div className="absolute top-0 right-0 flex gap-2 z-10">
+            {canEditTechnique() && !isEditing && (
+              <>
+                <button
+                  onClick={handleEdit}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Edit className="h-4 w-4" />
+                  수정
+                </button>
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  삭제
+                </button>
+              </>
+            )}
+
+            {isEditing && (
+              <>
+                <button
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                  취소
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving ? '저장 중...' : '저장'}
+                </button>
+              </>
+            )}
           </div>
-        )}
-
-        {/* Header */}
-        <header className="relative">
-          {/* Edit Button */}
-          {canEditTechnique() && !isEditing && (
-            <button
-              onClick={handleEdit}
-              className="absolute top-0 right-0 flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Edit className="h-4 w-4" />
-              수정
-            </button>
-          )}
-
-          {/* Save/Cancel Buttons */}
-          {isEditing && (
-            <div className="absolute top-0 right-0 flex gap-2">
-              <button
-                onClick={handleCancel}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
-              >
-                <X className="h-4 w-4" />
-                취소
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-              >
-                <Save className="h-4 w-4" />
-                {saving ? '저장 중...' : '저장'}
-              </button>
-            </div>
-          )}
 
           {isEditing ? (
-            <div className="space-y-4 pr-32">
-              <div>
-                <label className="block text-sm font-medium mb-2">기술 이름 (한국어)</label>
-                <input
-                  type="text"
-                  value={editForm.name.ko}
-                  onChange={(e) => setEditForm({ ...editForm, name: { ...editForm.name, ko: e.target.value } })}
-                  className="w-full px-3 py-2 text-4xl font-bold border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+            <div className="space-y-6 pt-12">
+              {/* Thumbnail Edit */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+                <h3 className="text-lg font-semibold">썸네일 이미지</h3>
+                <div className="flex items-center gap-4">
+                  {previewUrl ? (
+                    <div className="relative w-40 aspect-square rounded-md overflow-hidden border border-border">
+                      <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full hover:bg-black/70"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center w-40 aspect-square rounded-md border border-dashed border-input bg-muted/50">
+                      <span className="text-xs text-muted-foreground">이미지 없음</span>
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <label
+                      htmlFor="thumbnail-upload-edit"
+                      className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      이미지 업로드
+                    </label>
+                    <input
+                      id="thumbnail-upload-edit"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+                    <p className="text-xs text-muted-foreground mt-2">
+                      최대 1MB, 자동 압축됨.
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">기술 이름 (영어)</label>
-                <input
-                  type="text"
-                  value={editForm.name.en}
-                  onChange={(e) => setEditForm({ ...editForm, name: { ...editForm.name, en: e.target.value } })}
-                  className="w-full px-3 py-2 text-xl border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+
+              <div className="grid gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">기술 이름 (한국어)</label>
+                  <input
+                    type="text"
+                    value={editForm.name.ko}
+                    onChange={(e) => setEditForm({ ...editForm, name: { ...editForm.name, ko: e.target.value } })}
+                    className="w-full px-3 py-2 text-xl font-bold border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">기술 이름 (영어)</label>
+                  <input
+                    type="text"
+                    value={editForm.name.en}
+                    onChange={(e) => setEditForm({ ...editForm, name: { ...editForm.name, en: e.target.value } })}
+                    className="w-full px-3 py-2 text-lg border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
               </div>
 
               {/* Type Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-2">유형</label>
-                <select
-                  value={editForm.type}
-                  onChange={(e) => setEditForm({ ...editForm, type: e.target.value as 'gi' | 'nogi' | 'both' })}
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="both">기/노기 공용</option>
-                  <option value="gi">기 (도복)</option>
-                  <option value="nogi">노기</option>
-                </select>
-              </div>
-
-              {/* Parent Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-2">상위 기술 (Parent)</label>
-                <select
-                  value={editForm.parentId || ''}
-                  onChange={(e) => setEditForm({ ...editForm, parentId: e.target.value || null })}
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">없음 (최상위)</option>
-                  {allTechniques
-                    .filter(t => t._id !== technique?._id) // Prevent selecting self
-                    .sort((a, b) => a.name.ko.localeCompare(b.name.ko))
-                    .map((tech) => (
-                      <option key={tech._id} value={tech._id}>
-                        {tech.name.ko} {tech.name.en ? `(${tech.name.en})` : ''} - Level {tech.level}
-                      </option>
-                    ))}
-                </select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  상위 기술을 변경하면 레벨이 자동으로 재계산됩니다.
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">유형</label>
+                  <select
+                    value={editForm.type}
+                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value as 'gi' | 'nogi' | 'both' })}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="both">기/노기 공용</option>
+                    <option value="gi">기 (도복)</option>
+                    <option value="nogi">노기</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">상위 기술 (Parent)</label>
+                  <select
+                    value={editForm.parentId || ''}
+                    onChange={(e) => setEditForm({ ...editForm, parentId: e.target.value || null })}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">없음 (최상위)</option>
+                    {allTechniques
+                      .filter(t => t._id !== technique?._id) // Prevent selecting self
+                      .sort((a, b) => a.name.ko.localeCompare(b.name.ko))
+                      .map((tech) => (
+                        <option key={tech._id} value={tech._id}>
+                          {tech.name.ko} {tech.name.en ? `(${tech.name.en})` : ''} - Level {tech.level}
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
             </div>
           ) : (
-            <>
-              <h1 className="text-4xl font-bold tracking-tight lg:text-5xl mb-2">
-                {technique.name.ko}
-              </h1>
-              {technique.name.en && (
-                <p className="text-xl text-muted-foreground mb-4">{technique.name.en}</p>
+            <div className="flex flex-col md:flex-row gap-6 items-start pt-12 md:pt-0">
+              {/* Thumbnail - Left side */}
+              {technique.thumbnailUrl && (
+                <div className="w-full md:w-[200px] flex-shrink-0 aspect-square rounded-lg overflow-hidden border border-border bg-muted/50">
+                  <img
+                    src={technique.thumbnailUrl}
+                    alt={technique.name.ko}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
               )}
-            </>
-          )}
 
-          <div className="flex flex-wrap gap-2 mt-4">
-            <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary capitalize">
-              {translateRole(technique.primaryRole)}
-            </span>
-            <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground capitalize">
-              {translateType(technique.type)}
-            </span>
-            {technique.level > 1 && (
-              <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
-                Level {technique.level}
-              </span>
-            )}
-          </div>
+              {/* Title & Info - Right side */}
+              <div className="flex-1 w-full">
+                <h1 className="text-4xl font-bold tracking-tight lg:text-5xl mb-2">
+                  {technique.name.ko}
+                </h1>
+                {technique.name.en && (
+                  <p className="text-xl text-muted-foreground mb-4">{technique.name.en}</p>
+                )}
+
+                <div className="flex flex-wrap gap-2 mt-4">
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary capitalize">
+                    {translateRole(technique.primaryRole)}
+                  </span>
+                  <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground capitalize">
+                    {translateType(technique.type)}
+                  </span>
+                  {technique.level > 1 && (
+                    <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
+                      Level {technique.level}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </header>
 
         {/* Media */}
-        {technique.videos && technique.videos.length > 0 && (
-          <div className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted/50">
-            <iframe
-              width="100%"
-              height="100%"
-              src={technique.videos[0].url.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
-              title={technique.name.ko}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="w-full h-full"
-            />
-          </div>
-        )}
-
-        {/* Images */}
-        {technique.images && technique.images.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {technique.images.map((image, index) => (
-              <div key={index} className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted/50">
-                <img
-                  src={image.url}
-                  alt={image.captionKo || technique.name.ko}
-                  className="w-full h-full object-cover"
-                />
-                {image.captionKo && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-sm p-2">
-                    {image.captionKo}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+        {isEditing ? (
+          <VideoUrlInput
+            urls={editForm.videoUrls}
+            onChange={(urls) => setEditForm({ ...editForm, videoUrls: urls })}
+          />
+        ) : (
+          technique.videos && technique.videos.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {technique.videos.map((video, index) => (
+                <div key={index} className="aspect-video w-full overflow-hidden rounded-lg border border-border bg-muted/50">
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    src={video.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                    title={`${technique.name.ko} - Video ${index + 1}`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                  />
+                </div>
+              ))}
+            </div>
+          )
         )}
 
         {/* Description */}
         <section className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-semibold prose-p:text-foreground/90 prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground">
           {isEditing ? (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">설명 (한국어)</label>
-                <textarea
-                  value={editForm.description.ko}
-                  onChange={(e) => setEditForm({ ...editForm, description: { ...editForm.description, ko: e.target.value } })}
-                  rows={10}
-                  className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
-                  placeholder="마크다운 지원"
-                />
-              </div>
+              <MarkdownEditor
+                label="설명 (한국어)"
+                value={editForm.description.ko}
+                onChange={(val) => setEditForm({ ...editForm, description: { ...editForm.description, ko: val } })}
+                placeholder="기술에 대한 상세한 설명을 입력하세요..."
+              />
               <div>
                 <label className="block text-sm font-medium mb-2">설명 (영어)</label>
                 <textarea
                   value={editForm.description.en}
                   onChange={(e) => setEditForm({ ...editForm, description: { ...editForm.description, en: e.target.value } })}
-                  rows={10}
+                  rows={5}
                   className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono text-sm"
                   placeholder="Markdown supported (optional)"
                 />
@@ -516,6 +659,39 @@ export default function TechniquePage() {
           최종 수정: {new Date(technique.updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
         </footer>
       </article>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-lg shadow-lg max-w-md w-full mx-4 p-6 space-y-4">
+            <div className="space-y-2">
+              <h2 className="text-xl font-semibold text-foreground">기술 삭제</h2>
+              <p className="text-muted-foreground">
+                정말 <span className="font-semibold text-foreground">{technique?.name.ko}</span> 기술을 삭제하시겠습니까?
+              </p>
+              <p className="text-sm text-destructive">
+                이 작업은 되돌릴 수 없습니다.
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+              >
+                {deleting ? '삭제 중...' : '삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

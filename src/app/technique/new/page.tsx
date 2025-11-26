@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, Upload, X } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -22,7 +24,7 @@ export default function NewTechniquePage() {
     isCorePosition: false,
     positionType: 'neutral',
     parentId: '', // ObjectId
-    videoUrl: '',
+    videoUrls: [''],
     imageUrl: '',
     roleTags: '', // comma separated
   });
@@ -114,7 +116,7 @@ export default function NewTechniquePage() {
         isCorePosition: formData.isCorePosition,
         positionType: formData.positionType,
         parentId: formData.parentId || null,
-        videos: formData.videoUrl ? [{ url: formData.videoUrl }] : [],
+        videos: formData.videoUrls.filter(url => url.trim()).map(url => ({ url })),
         images: finalImageUrl ? [{ url: finalImageUrl, isPrimary: true }] : [],
         thumbnailUrl: finalImageUrl,
         status: 'published', // Auto publish for now for ease of testing
@@ -163,6 +165,48 @@ export default function NewTechniquePage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Thumbnail Image - Moved to top */}
+          <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
+            <h3 className="text-lg font-semibold">썸네일 이미지</h3>
+            <div className="flex items-center gap-4">
+              {previewUrl ? (
+                <div className="relative w-40 aspect-video rounded-md overflow-hidden border border-border">
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full hover:bg-black/70"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-40 aspect-video rounded-md border border-dashed border-input bg-muted/50">
+                  <span className="text-xs text-muted-foreground">이미지 없음</span>
+                </div>
+              )}
+              <div className="flex-1">
+                <label
+                  htmlFor="thumbnail-upload"
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  이미지 업로드
+                </label>
+                <input
+                  id="thumbnail-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  최대 1MB, 자동 압축됨.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Basic Info */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">기본 정보</h3>
@@ -258,65 +302,18 @@ export default function NewTechniquePage() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">내용</h3>
             <div className="grid gap-2">
-              <label className="text-sm font-medium">설명 (마크다운 지원)</label>
-              <textarea
-                required
-                className="flex min-h-[150px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              <MarkdownEditor
+                label="설명 (마크다운 지원)"
                 value={formData.description.ko}
-                onChange={e => setFormData({ ...formData, description: { ...formData.description, ko: e.target.value } })}
+                onChange={(val) => setFormData({ ...formData, description: { ...formData.description, ko: val } })}
                 placeholder="기술에 대한 상세한 설명을 입력하세요..."
               />
             </div>
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">유튜브 영상 URL</label>
-              <input
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="https://youtube.com/..."
-                value={formData.videoUrl}
-                onChange={e => setFormData({ ...formData, videoUrl: e.target.value })}
-              />
-            </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">썸네일 이미지</label>
-              <div className="flex items-center gap-4">
-                {previewUrl ? (
-                  <div className="relative w-40 aspect-video rounded-md overflow-hidden border border-border">
-                    <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={removeImage}
-                      className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full hover:bg-black/70"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center w-40 aspect-video rounded-md border border-dashed border-input bg-muted/50">
-                    <span className="text-xs text-muted-foreground">이미지 없음</span>
-                  </div>
-                )}
-                <div className="flex-1">
-                  <label
-                    htmlFor="thumbnail-upload"
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 cursor-pointer"
-                  >
-                    <Upload className="mr-2 h-4 w-4" />
-                    이미지 업로드
-                  </label>
-                  <input
-                    id="thumbnail-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageChange}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    최대 1MB, 자동 압축됨.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <VideoUrlInput
+              urls={formData.videoUrls}
+              onChange={(urls) => setFormData({ ...formData, videoUrls: urls })}
+            />
           </div>
 
           <button
