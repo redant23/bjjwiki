@@ -44,14 +44,21 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
           if (searchQuery) {
             const allIds = techs.reduce((acc, t) => ({ ...acc, [t._id]: true }), {});
             setExpanded(allIds);
-          } else {
-            // Expand roots by default if not already expanded
-            setExpanded(prev => {
-              if (Object.keys(prev).length === 0) {
-                return builtTree.reduce((acc, t) => ({ ...acc, [t._id]: true }), {});
+          } else if (pathname.startsWith('/technique/')) {
+            // Auto-expand based on current path
+            const expandedIds: Record<string, boolean> = {};
+
+            techs.forEach(t => {
+              const href = `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
+              // If current pathname includes this technique's path (is a parent or self), expand it
+              // Actually we only need to expand parents. Self doesn't need to be expanded unless it has children.
+              // But expanding self is fine too if it has children.
+              if (pathname.startsWith(href)) {
+                expandedIds[t._id] = true;
               }
-              return prev;
             });
+
+            setExpanded(prev => ({ ...prev, ...expandedIds }));
           }
         }
       } catch (error) {
@@ -107,10 +114,33 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
     return roots;
   };
 
-  const toggleExpand = (id: string, e: React.MouseEvent) => {
+  const expandNode = (node: Technique) => {
+    const isExpanding = !expanded[node._id];
+
+    // If it's a root node (no parentId) and we are expanding it
+    if (!node.parentId && isExpanding) {
+      // Close other root nodes
+      const newExpanded = { ...expanded };
+
+      // Find all root nodes from the tree state
+      tree.forEach(root => {
+        if (root._id !== node._id) {
+          newExpanded[root._id] = false;
+        }
+      });
+
+      newExpanded[node._id] = true;
+      setExpanded(newExpanded);
+    } else {
+      // Normal toggle
+      setExpanded(prev => ({ ...prev, [node._id]: !prev[node._id] }));
+    }
+  };
+
+  const toggleExpand = (node: Technique, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+    expandNode(node);
   };
 
   const handleMove = async (node: Technique, direction: 'up' | 'down', e: React.MouseEvent) => {
@@ -194,11 +224,11 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
               ? "bg-accent/10 font-bold text-accent"
               : "text-foreground hover:bg-muted/50"
           )}
-          style={{ paddingLeft: `${depth * 16 + 8}px` }}
+          style={{ paddingLeft: `${depth * 6 + 2}px` }}
         >
           {hasChildren ? (
             <button
-              onClick={(e) => toggleExpand(node._id, e)}
+              onClick={(e) => toggleExpand(node, e)}
               className={cn(
                 "p-0.5 rounded mr-1.5 transition-colors",
                 isActive
@@ -218,7 +248,16 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
 
           <Link
             href={href}
-            onClick={() => onLinkClick?.()}
+            onClick={() => {
+              // Only close sidebar if it's a leaf node (no children)
+              if (!hasChildren) {
+                onLinkClick?.();
+              }
+              // Only toggle if it has children, otherwise just navigate
+              if (hasChildren) {
+                expandNode(node);
+              }
+            }}
             className={cn(
               "flex-1 text-sm truncate transition-colors",
               isActive ? "text-accent" : ""
