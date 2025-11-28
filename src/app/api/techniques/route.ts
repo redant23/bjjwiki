@@ -34,6 +34,7 @@ export async function GET(request: Request) {
     const primaryRole = searchParams.get('primaryRole');
     const status = searchParams.get('status') || 'published'; // Default to published
     const search = searchParams.get('search');
+    const fields = searchParams.get('fields');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = { status };
@@ -56,7 +57,14 @@ export async function GET(request: Request) {
       ];
     }
 
-    const techniques = await Technique.find(query).sort({ 'name.ko': 1 });
+    let queryBuilder = Technique.find(query).sort({ 'name.ko': 1 });
+
+    if (fields === 'light') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      queryBuilder = queryBuilder.select('_id name slug parentId pathSlugs primaryRole type') as any;
+    }
+
+    const techniques = await queryBuilder;
 
     return NextResponse.json({ success: true, data: techniques });
   } catch (error) {

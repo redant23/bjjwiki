@@ -7,6 +7,7 @@ import { ChevronLeft, Upload, X } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
+import { TagInput } from '@/components/ui/TagInput';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function NewTechniquePage() {
   // Form State
   const [formData, setFormData] = useState({
     name: { ko: '', en: '' },
-    aka: { ko: '', en: '' }, // comma separated
+    aka: { ko: [] as string[], en: [] as string[] },
     description: { ko: '', en: '' },
     type: 'both',
     primaryRole: 'position',
@@ -105,8 +106,8 @@ export default function NewTechniquePage() {
       const payload = {
         name: formData.name,
         aka: {
-          ko: formData.aka.ko.split(',').map(s => s.trim()).filter(Boolean),
-          en: formData.aka.en.split(',').map(s => s.trim()).filter(Boolean),
+          ko: formData.aka.ko,
+          en: formData.aka.en,
         },
         description: formData.description,
         type: formData.type,
@@ -231,6 +232,14 @@ export default function NewTechniquePage() {
                 />
               </div>
             </div>
+
+            {/* AKA (Aliases) */}
+            <TagInput
+              label="별칭 (A.K.A)"
+              tags={formData.aka.ko}
+              onChange={(tags) => setFormData({ ...formData, aka: { ...formData.aka, ko: tags } })}
+              placeholder="별칭 입력 후 Enter"
+            />
           </div>
 
           {/* Classification */}

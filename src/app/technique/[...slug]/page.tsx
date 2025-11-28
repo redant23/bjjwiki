@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
-import { ChevronRight, Edit, Save, X, Trash2, Upload } from 'lucide-react';
+import { Edit, Save, X, Trash2, Upload } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
+import { Breadcrumb } from '@/components/ui/Breadcrumb';
+import { TagInput } from '@/components/ui/TagInput';
 
 interface Technique {
   _id: string;
@@ -378,22 +380,12 @@ export default function TechniquePage() {
   return (
     <div className="w-full">
       {/* Breadcrumbs */}
-      <nav className="mb-6 flex items-center text-sm text-muted-foreground overflow-x-auto whitespace-nowrap" aria-label="Breadcrumb">
-        <Link href="/" className="hover:text-foreground transition-colors">홈</Link>
-        <ChevronRight className="mx-2 h-4 w-4 flex-shrink-0" />
-        {breadcrumbPath.map((item, index) => (
-          <div key={item.slug} className="flex items-center">
-            <Link
-              href={`/technique/${breadcrumbPath.slice(0, index + 1).map(p => p.slug).join('/')}`}
-              className="hover:text-foreground transition-colors"
-            >
-              {item.name}
-            </Link>
-            <ChevronRight className="mx-2 h-4 w-4 flex-shrink-0" />
-          </div>
-        ))}
-        <span className="font-medium text-foreground">{technique.name.ko}</span>
-      </nav>
+      <Breadcrumb
+        items={breadcrumbPath.map((item, index) => ({
+          label: item.name,
+          href: `/technique/${breadcrumbPath.slice(0, index + 1).map(p => p.slug).join('/')}`
+        }))}
+      />
 
       <article className="space-y-8">
         {/* Header Area */}
@@ -401,23 +393,23 @@ export default function TechniquePage() {
           {/* Action Buttons */}
           <div className="absolute top-0 right-0 flex gap-2 z-10">
             {canEditTechnique() && !isEditing && (
-              <>
+              <div className="flex items-center rounded-md border border-input bg-background shadow-sm">
                 <button
                   onClick={handleEdit}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors border-r border-input last:border-0 rounded-l-md"
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3.5 w-3.5" />
                   수정
                 </button>
                 <button
                   onClick={handleDeleteClick}
                   disabled={deleting}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 rounded-r-md"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                   삭제
                 </button>
-              </>
+              </div>
             )}
 
             {isEditing && (
@@ -507,6 +499,14 @@ export default function TechniquePage() {
                 </div>
               </div>
 
+              {/* AKA (Aliases) */}
+              <TagInput
+                label="별칭 (A.K.A)"
+                tags={editForm.aka.ko}
+                onChange={(tags) => setEditForm({ ...editForm, aka: { ...editForm.aka, ko: tags } })}
+                placeholder="별칭 입력 후 Enter"
+              />
+
               {/* Type Selection */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -559,8 +559,14 @@ export default function TechniquePage() {
                 <h1 className="text-4xl font-bold tracking-tight lg:text-5xl mb-2">
                   {technique.name.ko}
                 </h1>
-                {technique.name.en && (
-                  <p className="text-xl text-muted-foreground mb-4">{technique.name.en}</p>
+                {(technique.name.en || (technique.aka.ko && technique.aka.ko.length > 0)) && (
+                  <p className="text-xl text-muted-foreground mb-4">
+                    {technique.name.en}
+                    <span className="text-[1rem]">
+                      {technique.name.en && technique.aka.ko && technique.aka.ko.length > 0 && ' | A.K.A. '}
+                      {technique.aka.ko && technique.aka.ko.length > 0 && technique.aka.ko.join(', ')}
+                    </span>
+                  </p>
                 )}
 
                 <div className="flex flex-wrap gap-2 mt-4">
@@ -570,11 +576,6 @@ export default function TechniquePage() {
                   <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground capitalize">
                     {translateType(technique.type)}
                   </span>
-                  {technique.level > 1 && (
-                    <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-sm font-medium text-muted-foreground">
-                      Level {technique.level}
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
