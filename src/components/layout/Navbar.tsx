@@ -1,4 +1,4 @@
-import { NavbarClient } from './NavbarClient';
+import { NavbarClient } from '@/components/layout/NavbarClient';
 import { getTechniqueTree } from '@/lib/technique-service';
 
 export async function Navbar() {
