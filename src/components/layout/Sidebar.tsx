@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown, Settings, Check } from 'lucide-react';
 
 interface Technique {
   _id: string;
@@ -13,6 +13,7 @@ interface Technique {
   parentId?: string;
   pathSlugs: string[];
   children?: Technique[];
+  order?: number;
 }
 
 interface SidebarProps {
@@ -26,6 +27,8 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [isEditingOrder, setIsEditingOrder] = useState(false);
+  const [isSavingOrder, setIsSavingOrder] = useState(false);
 
   useEffect(() => {
     async function fetchTechniques() {
@@ -83,6 +86,24 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
       }
     });
 
+    // Sort function
+    const sortFn = (a: Technique, b: Technique) => {
+      if (a.order !== b.order) {
+        return (a.order || 0) - (b.order || 0);
+      }
+      return a.name.ko.localeCompare(b.name.ko);
+    };
+
+    // Sort roots
+    roots.sort(sortFn);
+
+    // Sort children recursively (or just iterate map)
+    map.forEach(node => {
+      if (node.children && node.children.length > 0) {
+        node.children.sort(sortFn);
+      }
+    });
+
     return roots;
   };
 
@@ -90,6 +111,72 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
     e.preventDefault();
     e.stopPropagation();
     setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleMove = async (node: Technique, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isSavingOrder) return;
+
+    // Helper to find and swap nodes in the tree
+    const newTree = [...tree];
+    let parentChildren: Technique[] = newTree;
+
+    // Find the array containing the node
+    if (node.parentId) {
+      const findParent = (nodes: Technique[]): Technique | null => {
+        for (const n of nodes) {
+          if (n._id === node.parentId) return n;
+          if (n.children) {
+            const found = findParent(n.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      const parent = findParent(newTree);
+      if (parent && parent.children) {
+        parentChildren = parent.children;
+      }
+    }
+
+    const index = parentChildren.findIndex(n => n._id === node._id);
+    if (index === -1) return;
+
+    // Check bounds
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === parentChildren.length - 1) return;
+
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+    // Swap
+    const temp = parentChildren[index];
+    parentChildren[index] = parentChildren[targetIndex];
+    parentChildren[targetIndex] = temp;
+
+    // Update orders
+    // We assign orders based on index to ensure consistency
+    const updates = parentChildren.map((n, i) => ({
+      _id: n._id,
+      order: i
+    }));
+
+    // Optimistic update
+    setTree(newTree);
+    setIsSavingOrder(true);
+
+    try {
+      await fetch('/api/techniques/reorder', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: updates }),
+      });
+    } catch (error) {
+      console.error('Failed to save order', error);
+      // TODO: Revert on error
+    } finally {
+      setIsSavingOrder(false);
+    }
   };
 
   const renderNode = (node: Technique, depth = 0) => {
@@ -139,6 +226,25 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
           >
             {node.name.ko}
           </Link>
+
+          {isEditingOrder && depth === 0 && (
+            <div className="flex items-center gap-1 ml-2">
+              <button
+                onClick={(e) => handleMove(node, 'up', e)}
+                className="p-1 hover:bg-accent/20 rounded text-muted-foreground hover:text-accent"
+                title="위로 이동"
+              >
+                <ArrowUp className="h-3 w-3" />
+              </button>
+              <button
+                onClick={(e) => handleMove(node, 'down', e)}
+                className="p-1 hover:bg-accent/20 rounded text-muted-foreground hover:text-accent"
+                title="아래로 이동"
+              >
+                <ArrowDown className="h-3 w-3" />
+              </button>
+            </div>
+          )}
         </div>
 
         {hasChildren && isExpanded && (
@@ -192,6 +298,30 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
           </div>
         </div>
         */}
+        {/* Order Edit Button */}
+        <div className="pb-4 bg-background">
+          <button
+            onClick={() => setIsEditingOrder(!isEditingOrder)}
+            className={cn(
+              "flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors",
+              isEditingOrder
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
+            )}
+          >
+            {isEditingOrder ? (
+              <>
+                <Check className="h-4 w-4" />
+                편집 완료
+              </>
+            ) : (
+              <>
+                <Settings className="h-4 w-4" />
+                순서 편집
+              </>
+            )}
+          </button>
+        </div>
 
         <nav className="w-full space-y-1 pb-40">
           {tree.map(node => renderNode(node))}
@@ -202,6 +332,8 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
             </div>
           )}
         </nav>
+
+
       </div>
     </aside>
   );

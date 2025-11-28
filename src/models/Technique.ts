@@ -36,6 +36,7 @@ export interface ITechnique extends Document {
   | 'takedown';
   roleTags: string[]; // e.g., ['transition', 'sweep', 'backtake']
   difficulty: number; // 1-10
+  order: number; // For custom sorting
 
   // 4. Position Flags
   isCorePosition?: boolean; // true if it's a base position (Side, Mount, etc.)
@@ -123,6 +124,7 @@ const TechniqueSchema: Schema = new Schema(
     },
     roleTags: { type: [String], default: [] },
     difficulty: { type: Number, min: 1, max: 10, default: 1 },
+    order: { type: Number, default: 0 },
 
     // 4. Position Flags
     isCorePosition: { type: Boolean, default: false },

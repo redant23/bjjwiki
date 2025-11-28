@@ -57,11 +57,11 @@ export async function GET(request: Request) {
       ];
     }
 
-    let queryBuilder = Technique.find(query).sort({ 'name.ko': 1 });
+    let queryBuilder = Technique.find(query).sort({ order: 1, 'name.ko': 1 });
 
     if (fields === 'light') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryBuilder = queryBuilder.select('_id name slug parentId pathSlugs primaryRole type') as any;
+      queryBuilder = queryBuilder.select('_id name slug parentId pathSlugs primaryRole type order') as any;
     }
 
     const techniques = await queryBuilder;
