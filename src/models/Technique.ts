@@ -31,7 +31,9 @@ export interface ITechnique extends Document {
   | 'escape'
   | 'transition'
   | 'leg_entry'
-  | 'control_hold';
+  | 'control_hold'
+  | 'grip'
+  | 'takedown';
   roleTags: string[]; // e.g., ['transition', 'sweep', 'backtake']
   difficulty: number; // 1-10
 
@@ -114,6 +116,8 @@ const TechniqueSchema: Schema = new Schema(
         'transition',
         'leg_entry',
         'control_hold',
+        'grip',
+        'takedown',
       ],
       required: true,
     },

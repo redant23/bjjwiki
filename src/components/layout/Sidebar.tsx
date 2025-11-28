@@ -193,7 +193,7 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
         </div>
         */}
 
-        <nav className="w-full space-y-1">
+        <nav className="w-full space-y-1 pb-40">
           {tree.map(node => renderNode(node))}
 
           {tree.length === 0 && !loading && (

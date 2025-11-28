@@ -69,7 +69,23 @@ export async function GET() {
       results.push({ key, slug, id: technique._id });
     }
 
-    return NextResponse.json({ success: true, results });
+    // Sync childrenIds after seeding
+    // 1. Clear all childrenIds first
+    await Technique.updateMany({}, { $set: { childrenIds: [] } });
+
+    // 2. Find all techniques that have a parent
+    const children = await Technique.find({ parentId: { $ne: null } }).select('_id parentId');
+
+    // 3. Add each child to its parent's childrenIds
+    for (const child of children) {
+      if (child.parentId) {
+        await Technique.findByIdAndUpdate(child.parentId, {
+          $addToSet: { childrenIds: child._id }
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true, results, message: 'Seeding and sync completed' });
   } catch (error) {
     console.error('Seeding failed:', error);
     return NextResponse.json({ success: false, error: String(error) }, { status: 500 });

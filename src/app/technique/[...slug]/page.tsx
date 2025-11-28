@@ -29,6 +29,7 @@ interface Technique {
   videos: { url: string }[];
   images: { url: string; captionKo?: string; captionEn?: string }[];
   thumbnailUrl?: string;
+  roleTags?: string[];
   updatedAt: string;
 }
 
@@ -58,6 +59,8 @@ export default function TechniquePage() {
     description: { ko: '', en: '' },
     aka: { ko: [] as string[], en: [] as string[] },
     type: 'both' as 'gi' | 'nogi' | 'both',
+    primaryRole: 'position' as string,
+    roleTags: '' as string,
     parentId: null as string | null,
     videoUrls: [] as string[],
     thumbnailUrl: '',
@@ -118,6 +121,8 @@ export default function TechniquePage() {
                 en: detailData.data.aka.en || [],
               },
               type: detailData.data.type || 'both',
+              primaryRole: detailData.data.primaryRole || 'position',
+              roleTags: detailData.data.roleTags?.join(', ') || '',
               parentId: detailData.data.parentId?._id || null,
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
               thumbnailUrl: detailData.data.thumbnailUrl || '',
@@ -175,6 +180,8 @@ export default function TechniquePage() {
         en: technique.aka.en || [],
       },
       type: technique.type as 'gi' | 'nogi' | 'both',
+      primaryRole: technique.primaryRole || 'position',
+      roleTags: technique.roleTags?.join(', ') || '',
       parentId: technique.parentId?._id || null,
       videoUrls: technique.videos?.map(v => v.url) || [],
       thumbnailUrl: technique.thumbnailUrl || '',
@@ -286,6 +293,8 @@ export default function TechniquePage() {
             en: editForm.aka.en.length > 0 ? editForm.aka.en : undefined,
           },
           type: editForm.type,
+          primaryRole: editForm.primaryRole,
+          roleTags: editForm.roleTags.split(',').map(s => s.trim()).filter(Boolean),
           parentId: editForm.parentId || null,
           videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
           thumbnailUrl: finalImageUrl,
@@ -314,6 +323,8 @@ export default function TechniquePage() {
               en: detailData.data.aka.en || [],
             },
             type: detailData.data.type || 'both',
+            primaryRole: detailData.data.primaryRole || 'position',
+            roleTags: detailData.data.roleTags?.join(', ') || '',
             parentId: detailData.data.parentId?._id || null,
             videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
             thumbnailUrl: detailData.data.thumbnailUrl || '',
@@ -364,6 +375,11 @@ export default function TechniquePage() {
       guard_pass: '가드 패스',
       drill: '드릴',
       transition: '트랜지션',
+      guard_recovery: '가드 리커버리',
+      leg_entry: '레그 엔트리',
+      control_hold: '컨트롤/홀드',
+      grip: '그립',
+      takedown: '테이크다운',
     };
     return map[role] || role;
   };
@@ -521,6 +537,43 @@ export default function TechniquePage() {
                     <option value="nogi">노기</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">주 역할</label>
+                  <select
+                    value={editForm.primaryRole}
+                    onChange={(e) => setEditForm({ ...editForm, primaryRole: e.target.value })}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="position">포지션</option>
+                    <option value="guard">가드</option>
+                    <option value="submission">서브미션</option>
+                    <option value="sweep">스윕</option>
+                    <option value="escape">이스케이프</option>
+                    <option value="guard_pass">가드 패스</option>
+                    <option value="drill">드릴</option>
+                    <option value="transition">트랜지션</option>
+                    <option value="guard_recovery">가드 리커버리</option>
+                    <option value="leg_entry">레그 엔트리</option>
+                    <option value="control_hold">컨트롤/홀드</option>
+                    <option value="grip">그립</option>
+                    <option value="takedown">테이크다운</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Role Tags */}
+              <div className="grid gap-2">
+                <label className="block text-sm font-medium mb-2">Role Tags (쉼표로 구분)</label>
+                <input
+                  type="text"
+                  value={editForm.roleTags}
+                  onChange={(e) => setEditForm({ ...editForm, roleTags: e.target.value })}
+                  className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="예: backtake, inversion, framing"
+                />
+              </div>
+
+              <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">상위 기술 (Parent)</label>
                   <select

@@ -276,6 +276,8 @@ export default function NewTechniquePage() {
                   <option value="guard_recovery">가드 리커버리</option>
                   <option value="leg_entry">레그 엔트리</option>
                   <option value="control_hold">컨트롤/홀드</option>
+                  <option value="grip">그립</option>
+                  <option value="takedown">테이크다운</option>
                 </select>
               </div>
             </div>

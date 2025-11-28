@@ -13,6 +13,9 @@ export function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Enable keyboard shortcut
+  useSearchShortcut(() => setIsSearchOpen(true));
+
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
