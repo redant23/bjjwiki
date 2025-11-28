@@ -13,11 +13,15 @@ export const metadata: Metadata = {
   description: "A community-driven Brazilian Jiu-Jitsu technique database",
 };
 
-export default function RootLayout({
+import { getTechniqueTree } from "@/lib/technique-service";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const tree = await getTechniqueTree();
+
   return (
     <html lang="ko" className="scroll-smooth">
       <body className={cn("min-h-screen bg-background font-sans antialiased", inter.className)}>
@@ -25,7 +29,7 @@ export default function RootLayout({
           <div className="relative flex min-h-screen flex-col">
             <Navbar />
             <div className="flex-1 flex">
-              <Sidebar />
+              <Sidebar initialTree={tree} />
               <main className="relative w-full min-w-0 md:ml-64">
                 <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
                   {children}

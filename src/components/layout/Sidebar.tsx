@@ -19,100 +19,44 @@ interface Technique {
 interface SidebarProps {
   mobile?: boolean;
   onLinkClick?: () => void;
+  initialTree: Technique[];
 }
 
-export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
+export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps) {
+  console.log('[Sidebar] Render. initialTree:', initialTree?.length);
   const pathname = usePathname();
-  const [tree, setTree] = useState<Technique[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [tree, setTree] = useState<Technique[]>(initialTree || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
+
+
+  // Auto-expand based on current path
   useEffect(() => {
-    async function fetchTechniques() {
-      try {
-        const res = await fetch(`/api/techniques?search=${searchQuery}&fields=light`);
-        const data = await res.json();
-        if (data.success) {
-          const techs: Technique[] = data.data;
-          const builtTree = buildTree(techs);
-          setTree(builtTree);
+    if (pathname.startsWith('/technique/')) {
+      const expandedIds: Record<string, boolean> = {};
 
-          // Auto-expand if searching
-          if (searchQuery) {
-            const allIds = techs.reduce((acc, t) => ({ ...acc, [t._id]: true }), {});
-            setExpanded(allIds);
-          } else if (pathname.startsWith('/technique/')) {
-            // Auto-expand based on current path
-            const expandedIds: Record<string, boolean> = {};
-
-            techs.forEach(t => {
-              const href = `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
-              // If current pathname includes this technique's path (is a parent or self), expand it
-              // Actually we only need to expand parents. Self doesn't need to be expanded unless it has children.
-              // But expanding self is fine too if it has children.
-              if (pathname.startsWith(href)) {
-                expandedIds[t._id] = true;
-              }
-            });
-
-            setExpanded(prev => ({ ...prev, ...expandedIds }));
+      // We need to flatten the tree to search easily, or just traverse
+      // Since we don't have a flat list in state easily accessible without traversing,
+      // let's traverse the tree state.
+      const traverse = (nodes: Technique[]) => {
+        nodes.forEach(node => {
+          const href = `/technique/${[...(node.pathSlugs || []), node.slug].join('/')}`;
+          if (pathname.startsWith(href)) {
+            expandedIds[node._id] = true;
           }
-        }
-      } catch (error) {
-        console.error('Failed to fetch techniques', error);
-      } finally {
-        setLoading(false);
-      }
+          if (node.children) traverse(node.children);
+        });
+      };
+      traverse(tree);
+
+      setExpanded(prev => ({ ...prev, ...expandedIds }));
     }
+  }, [pathname, tree]);
 
-    const timeoutId = setTimeout(() => {
-      fetchTechniques();
-    }, 300);
 
-    return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
-
-  const buildTree = (items: Technique[]) => {
-    const map = new Map<string, Technique>();
-    const roots: Technique[] = [];
-
-    // First pass: create nodes
-    items.forEach(item => {
-      map.set(item._id, { ...item, children: [] });
-    });
-
-    // Second pass: link children
-    items.forEach(item => {
-      if (item.parentId && map.has(item.parentId)) {
-        map.get(item.parentId)!.children!.push(map.get(item._id)!);
-      } else {
-        roots.push(map.get(item._id)!);
-      }
-    });
-
-    // Sort function
-    const sortFn = (a: Technique, b: Technique) => {
-      if (a.order !== b.order) {
-        return (a.order || 0) - (b.order || 0);
-      }
-      return a.name.ko.localeCompare(b.name.ko);
-    };
-
-    // Sort roots
-    roots.sort(sortFn);
-
-    // Sort children recursively (or just iterate map)
-    map.forEach(node => {
-      if (node.children && node.children.length > 0) {
-        node.children.sort(sortFn);
-      }
-    });
-
-    return roots;
-  };
 
   const expandNode = (node: Technique) => {
     const isExpanding = !expanded[node._id];
@@ -300,7 +244,7 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
     mobile ? "block w-full border-none" : "hidden md:block"
   );
 
-  if (loading && !tree.length) {
+  if (!tree.length) {
     return (
       <aside className={sidebarClasses}>
         <div className="h-full py-6 px-4 space-y-4">
@@ -365,7 +309,7 @@ export function Sidebar({ mobile, onLinkClick }: SidebarProps) {
         <nav className="w-full space-y-1 pb-40">
           {tree.map(node => renderNode(node))}
 
-          {tree.length === 0 && !loading && (
+          {tree.length === 0 && (
             <div className="text-sm text-muted-foreground text-center py-4">
               기술이 없습니다.
             </div>

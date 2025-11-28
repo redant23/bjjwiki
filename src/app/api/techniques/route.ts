@@ -36,9 +36,15 @@ export async function GET(request: Request) {
     const search = searchParams.get('search');
     const fields = searchParams.get('fields');
 
+    // Additional params for optimized filtering
+    const category = searchParams.get('category');
+    const difficulty = searchParams.get('difficulty');
+    const position = searchParams.get('position');
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = { status };
 
+    // Apply basic filters
     if (slug) query.slug = slug;
     if (parentId) query.parentId = parentId;
     if (level) query.level = parseInt(level);
@@ -47,17 +53,32 @@ export async function GET(request: Request) {
     if (primaryRole) query.primaryRole = primaryRole;
 
     if (search) {
-      query.$or = [
-        { 'name.ko': { $regex: search, $options: 'i' } },
-        { 'name.en': { $regex: search, $options: 'i' } },
-        { 'aka.ko': { $regex: search, $options: 'i' } },
-        { 'aka.en': { $regex: search, $options: 'i' } },
-        { 'description.ko': { $regex: search, $options: 'i' } },
-        { 'description.en': { $regex: search, $options: 'i' } },
-      ];
+      // Use text search if available, otherwise regex on indexed fields
+      // Note: Text search is most efficient but requires $text operator
+      query.$text = { $search: search };
     }
 
-    let queryBuilder = Technique.find(query).sort({ order: 1, 'name.ko': 1 });
+    if (category) {
+      // Use pathSlugs index for category filtering (more efficient than regex on ID)
+      query.pathSlugs = category;
+    }
+
+    if (difficulty) {
+      query.difficulty = parseInt(difficulty);
+    }
+
+    if (position) {
+      query.primaryRole = 'position';
+      // If specific position type is needed, add it here
+    }
+
+    // Optimize sort based on available indexes
+    let sortOptions: any = { order: 1, 'name.ko': 1 }; // Default sort (uses { order: 1 } index partially)
+
+    // If sorting by level, use compound index { level: 1, order: 1 }
+    // sortOptions = { level: 1, order: 1 }; 
+
+    let queryBuilder = Technique.find(query).sort(sortOptions).lean(); // Use lean() for performance
 
     if (fields === 'light') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

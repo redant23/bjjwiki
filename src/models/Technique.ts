@@ -101,7 +101,8 @@ const TechniqueSchema: Schema = new Schema(
     type: {
       type: String,
       enum: ['gi', 'nogi', 'both'],
-      default: 'both'
+      default: 'both',
+      index: true,
     },
     primaryRole: {
       type: String,
@@ -121,28 +122,30 @@ const TechniqueSchema: Schema = new Schema(
         'takedown',
       ],
       required: true,
+      index: true,
     },
-    roleTags: { type: [String], default: [] },
-    difficulty: { type: Number, min: 1, max: 10, default: 1 },
-    order: { type: Number, default: 0 },
+    roleTags: { type: [String], default: [], index: true },
+    difficulty: { type: Number, min: 1, max: 10, default: 1, index: true },
+    order: { type: Number, default: 0, index: true },
 
     // 4. Position Flags
-    isCorePosition: { type: Boolean, default: false },
+    isCorePosition: { type: Boolean, default: false, index: true },
     positionType: {
       type: String,
-      enum: ['top', 'bottom', 'neutral']
+      enum: ['top', 'bottom', 'neutral'],
+      index: true,
     },
 
     // 5. Hierarchy
-    parentId: { type: Schema.Types.ObjectId, ref: 'Technique', default: null },
+    parentId: { type: Schema.Types.ObjectId, ref: 'Technique', default: null, index: true },
     childrenIds: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
-    level: { type: Number, default: 1 },
-    pathSlugs: { type: [String], default: [] },
+    level: { type: Number, default: 1, index: true },
+    pathSlugs: { type: [String], default: [], index: true },
 
     // 6. Chaining
-    sweepsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
-    submissionsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
-    escapesFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
+    sweepsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
+    submissionsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
+    escapesFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
 
     // 7. Media
     thumbnailUrl: { type: String },
@@ -167,8 +170,8 @@ const TechniqueSchema: Schema = new Schema(
     },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' }, // Assuming User model exists or will exist
     lastEditedBy: { type: Schema.Types.ObjectId, ref: 'User' },
-    viewCount: { type: Number, default: 0 },
-    likeCount: { type: Number, default: 0 },
+    viewCount: { type: Number, default: 0, index: true },
+    likeCount: { type: Number, default: 0, index: true },
   },
   { timestamps: true }
 );
@@ -182,6 +185,11 @@ TechniqueSchema.index({
   'description.ko': 'text',
   'description.en': 'text'
 });
+
+// Compound Indexes
+TechniqueSchema.index({ primaryRole: 1, type: 1, difficulty: 1 });
+TechniqueSchema.index({ level: 1, order: 1 });
+TechniqueSchema.index({ positionType: 1, isCorePosition: 1 });
 
 // Prevent recompilation of model in development
 const Technique: Model<ITechnique> =
