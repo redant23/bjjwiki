@@ -2,14 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
 import dbConnect from '@/lib/db';
 import ImageModel from '@/models/Image';
+import { requireAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    const { session, error: authError } = await requireAdmin();
+    if (authError) return authError;
+
     await dbConnect();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const usage = formData.get('usage') as string;
-    const uploaderType = 'user'; // TODO: Get from session when auth is implemented
+    const uploaderType = session!.user.role;
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file uploaded' }, { status: 400 });

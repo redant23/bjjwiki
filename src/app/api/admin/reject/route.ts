@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
+import { requireAdmin } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    const { error: authError } = await requireAdmin();
+    if (authError) return authError;
+
     await dbConnect();
     const { id } = await request.json();
 

@@ -1,23 +1,12 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
-import { getServerSession } from 'next-auth';
-import { GET as authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { requireAdmin } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
-    // Check auth
-    // Note: In a real app, pass authOptions properly. 
-    // Here we are importing the handler which is not the options object directly, 
-    // but NextAuth v4 usually exports options separately or we need to extract them.
-    // For simplicity in this demo, we'll skip strict server-side session check 
-    // or assume the handler export works if we adjust.
-    // Let's just check if we can get a session.
-
-    // const session = await getServerSession(authOptions);
-    // if (!session) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const { error: authError } = await requireAdmin();
+    if (authError) return authError;
 
     await dbConnect();
     const { id } = await request.json();

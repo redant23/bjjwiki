@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import { CATEGORY_DESCRIPTIONS } from '@/lib/categoryData';
+import { requireAdmin } from '@/lib/auth';
 
 function generateSlug(name: string): string {
   // Extract English name from "Korean (English)"
@@ -16,6 +17,9 @@ function generateSlug(name: string): string {
 
 export async function GET() {
   try {
+    const { error: authError } = await requireAdmin();
+    if (authError) return authError;
+
     await dbConnect();
 
     const results = [];
