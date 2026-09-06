@@ -1,6 +1,9 @@
 import { NextAuthOptions, getServerSession, Session } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+import dbConnect from '@/lib/db';
+import User from '@/models/User';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,17 +14,31 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const adminEmail = process.env.ADMIN_EMAIL;
-        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-
-        if (
-          credentials?.email === adminEmail &&
-          credentials?.password === adminPassword
-        ) {
-          return { id: '1', name: 'Admin', email: adminEmail, role: 'admin' };
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
 
-        return null;
+        await dbConnect();
+
+        const user = await User.findOne({
+          email: credentials.email.toLowerCase().trim(),
+        }).select('+password');
+
+        if (!user) {
+          return null;
+        }
+
+        const isValid = await bcrypt.compare(credentials.password, user.password);
+        if (!isValid) {
+          return null;
+        }
+
+        return {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.nickname,
+          role: user.role,
+        };
       },
     }),
   ],
