@@ -1,8 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BookOpen, Layers, Shield } from "lucide-react";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function Home() {
+export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const isAdmin = session?.user?.role === "admin";
+
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
@@ -31,13 +36,15 @@ export default function Home() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link
-                href="/technique/new"
-                className="inline-flex h-11 items-center justify-center rounded-md bg-accent px-8 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-              >
-                기술 등록하기
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              {isAdmin && (
+                <Link
+                  href="/technique/new"
+                  className="inline-flex h-11 items-center justify-center rounded-md bg-accent px-8 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+                >
+                  기술 등록하기
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              )}
               <Link
                 href="/technique/guard/open-guard"
                 className="inline-flex h-11 items-center justify-center rounded-md border border-input bg-background px-8 text-sm font-medium shadow-sm transition-colors hover:bg-primary-foreground/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
