@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ChevronLeft, Upload, X } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
@@ -11,6 +12,7 @@ import { TagInput } from '@/components/ui/TagInput';
 
 export default function NewTechniquePage() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -50,6 +52,20 @@ export default function NewTechniquePage() {
     }
     fetchParents();
   }, []);
+
+  useEffect(() => {
+    if (status !== 'loading' && session?.user?.role !== 'admin') {
+      router.push('/');
+    }
+  }, [status, session, router]);
+
+  if (status === 'loading') {
+    return <div className="p-8">Loading...</div>;
+  }
+
+  if (session?.user?.role !== 'admin') {
+    return null;
+  }
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

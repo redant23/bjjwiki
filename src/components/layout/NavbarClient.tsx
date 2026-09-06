@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Plus, Moon, Sun, Menu, X, Search } from 'lucide-react';
 import { useTheme } from 'next-themes';
+import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { SearchModal } from '@/components/ui/SearchModal';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -24,6 +25,7 @@ interface NavbarClientProps {
 
 export function NavbarClient({ initialTree }: NavbarClientProps) {
   const { theme, setTheme } = useTheme();
+  const { data: session } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -113,14 +115,16 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
                 )}
               </button>
             )}
-            <Link
-              href="/technique/new"
-              className="inline-flex text-primary items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-accent text-accent-foreground hover:bg-accent/90 h-9 px-4 py-2"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              <span className="hidden sm:inline">기술 등록</span>
-              <span className="sm:hidden">등록</span>
-            </Link>
+            {session?.user?.role === 'admin' && (
+              <Link
+                href="/technique/new"
+                className="inline-flex text-primary items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-accent text-accent-foreground hover:bg-accent/90 h-9 px-4 py-2"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">기술 등록</span>
+                <span className="sm:hidden">등록</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
