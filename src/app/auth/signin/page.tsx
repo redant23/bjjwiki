@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function SignIn() {
   const router = useRouter();
@@ -65,6 +66,12 @@ export default function SignIn() {
             Sign In
           </button>
         </form>
+        <p className="text-center text-sm text-muted-foreground">
+          계정이 없나요?{' '}
+          <Link href="/auth/signup" className="underline hover:text-foreground">
+            회원가입
+          </Link>
+        </p>
       </div>
     </div>
   );
