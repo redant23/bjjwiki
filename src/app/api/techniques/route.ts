@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import rateLimit from '@/lib/rate-limit';
 import mongoose from 'mongoose';
+import { requireAdmin } from '@/lib/auth';
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 60 seconds
@@ -99,6 +100,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const { error: authError } = await requireAdmin();
+    if (authError) return authError;
+
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
 
     try {
