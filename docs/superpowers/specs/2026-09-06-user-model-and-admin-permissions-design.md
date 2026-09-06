@@ -36,6 +36,7 @@
 - **로그인**:
   - `CredentialsProvider.authorize()`를 `.env` 비교 방식에서 `User.findOne({ email }).select('+password')` 후 `bcrypt.compare()`로 검증하는 방식으로 교체.
   - 인증 성공 시 반환 객체에 `id`, `email`, `nickname`, `role` 포함.
+- **관리자 계정 부트스트랩** (중요): 로그인을 DB 기반으로 바꾸면 기존 `.env` 관리자 계정은 더 이상 로그인에 쓰이지 않고, 회원가입은 항상 `role: 'user'`로 생성되므로 그대로 두면 관리자 계정이 하나도 없는 상태가 되어 아무도 기술을 등록/수정/삭제할 수 없게 된다. 이를 막기 위해 회원가입 라우트에서 가입하려는 `email`이 `process.env.ADMIN_EMAIL`과 일치하면 `role: 'admin'`으로, 그 외에는 `role: 'user'`로 생성한다. 즉 `.env`의 `ADMIN_EMAIL`로 회원가입하면 자동으로 관리자 계정이 만들어진다.
 - **세션/JWT 확장**:
   - `jwt` 콜백에서 `token.role`, `token.id` 저장.
   - `session` 콜백에서 `session.user.role`, `session.user.id`로 노출.
@@ -47,15 +48,27 @@
 ## 3. 권한 검증 (관리자 전용 가드)
 
 - `src/lib/auth.ts`에 `requireAdmin()` 헬퍼 함수를 추가한다. 세션이 없으면 401, 세션은 있지만 `role !== 'admin'`이면 403을 반환하는 `NextResponse`를 만들어 반환하고(또는 인증 통과 시 세션 객체 반환), 각 API 라우트에서 이 헬퍼를 호출해 결과를 바로 리턴할 수 있게 한다.
-- 적용 대상 라우트:
+- 적용 대상 라우트 (최초 작성 시 놓쳤던 라우트들을 디렉토리 전수 조사로 추가함):
   - `POST /api/techniques` (등록)
   - `PUT /api/techniques/[id]` (수정)
   - `DELETE /api/techniques/[id]` (삭제)
+  - `PUT /api/techniques/reorder` (기술 순서 변경 — 이것도 "수정"에 해당)
   - `POST /api/admin/approve`
   - `POST /api/admin/reject`
+  - `GET /api/admin/seed-categories` (카테고리 시드 스크립트 — `/api/admin/` 하위 라우트)
+  - `GET /api/admin/sync-children` (하위 기술 목록 동기화 — `/api/admin/` 하위 라우트)
+  - `POST /api/upload` (Cloudinary 업로드. 현재 코드에 `// TODO: Get from session when auth is implemented` 주석이 남아있는 자리로, 인증 없이 누구나 호출하면 Cloudinary 사용량 비용이 발생할 수 있음)
 - `GET` 계열 라우트(`/api/techniques`, `/api/techniques/[id]`)는 그대로 공개 유지 — 위키 열람은 비로그인 사용자도 가능해야 하므로 이번 작업에서 건드리지 않는다.
+- 참고: `approve` 라우트는 `status: 'approved'`, `is_current_version` 필드를 세팅하는데, 이는 `Technique` 스키마의 `status` enum(`'draft' | 'published' | 'archived'`)과 맞지 않고 `is_current_version` 필드 자체가 스키마에 없다. 이 데이터 불일치는 이번 작업 범위가 아니므로 손대지 않고, 권한 가드만 추가한다.
 
-## 4. 작업 범위(Scope)
+## 4. UI 반영
+
+API를 막아도 화면에 등록 버튼이 그대로 보이면 일반 사용자가 눌렀다가 403을 받는 경험을 하게 되므로 최소한의 화면 반영도 포함한다.
+
+- `src/components/layout/NavbarClient.tsx`: "기술 등록" 링크를 `useSession()`의 `session?.user?.role === 'admin'`일 때만 보이도록 조건부 렌더링.
+- `src/app/technique/new/page.tsx`: 관리자가 아니면(로그인 안 함 포함) 접근 시 홈(`/`)으로 리다이렉트.
+
+## 5. 작업 범위(Scope)
 
 **포함**:
 - User 모델 전체 필드 정의 (위 8개 필드 + role)
@@ -70,7 +83,7 @@
 
 이유: 이번 요청의 핵심은 "권한 관리"이며, 스킬/콤보 관리 기능은 별도의 UI/UX 설계가 필요한 독립적인 기능이기 때문이다.
 
-## 5. 예상 변경/신규 파일 목록
+## 6. 예상 변경/신규 파일 목록
 
 - 신규: `src/models/User.ts`
 - 신규: `src/lib/auth.ts` (authOptions, requireAdmin 헬퍼)
@@ -80,6 +93,17 @@
 - 수정: `src/app/api/auth/[...nextauth]/route.ts` (authOptions를 lib/auth.ts에서 import하도록 축소)
 - 수정: `src/app/api/techniques/route.ts` (POST에 requireAdmin 적용)
 - 수정: `src/app/api/techniques/[id]/route.ts` (PUT/DELETE에 requireAdmin 적용)
-- 수정: `src/app/api/admin/approve/route.ts` (requireAdmin 적용, 주석 처리된 인증 체크 코드 정리), `src/app/api/admin/reject/route.ts` (requireAdmin 적용)
+- 수정: `src/app/api/techniques/reorder/route.ts` (PUT에 requireAdmin 적용)
+- 수정: `src/app/api/admin/approve/route.ts` (requireAdmin 적용, 주석 처리된 인증 체크 코드 정리)
+- 수정: `src/app/api/admin/reject/route.ts` (requireAdmin 적용)
+- 수정: `src/app/api/admin/seed-categories/route.ts` (requireAdmin 적용)
+- 수정: `src/app/api/admin/sync-children/route.ts` (requireAdmin 적용)
+- 수정: `src/app/api/upload/route.ts` (requireAdmin 적용, TODO 주석 제거)
+- 수정: `src/components/layout/NavbarClient.tsx` (관리자만 등록 버튼 노출)
+- 수정: `src/app/technique/new/page.tsx` (비관리자 접근 시 리다이렉트)
 - 수정: `src/app/auth/signin/page.tsx` (회원가입 페이지 링크 추가)
-- 수정: `package.json` (`bcryptjs`, `@types/bcryptjs` 의존성 추가)
+- 수정: `package.json` (`bcryptjs` 의존성 추가. `bcryptjs`는 3.x부터 자체 타입을 번들하므로 `@types/bcryptjs`는 실제로 타입이 없을 때만 추가한다)
+
+## 7. 에러 처리 메모
+
+- 회원가입 시 `email`/`nickname`의 unique 인덱스 충돌(MongoDB 에러 코드 `E11000`)은 500이 아니라 409(Conflict)와 "이미 사용 중인 이메일/닉네임입니다" 메시지로 응답한다.
