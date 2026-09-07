@@ -7,6 +7,8 @@ import { authOptions } from "@/lib/auth";
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const isAdmin = session?.user?.role === "admin";
+  const showRegisterCta = !session || isAdmin;
+  const registerHref = session ? "/technique/new" : "/auth/signup";
 
   return (
     <div className="flex flex-col w-full">
@@ -36,9 +38,9 @@ export default async function Home() {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
-              {isAdmin && (
+              {showRegisterCta && (
                 <Link
-                  href="/technique/new"
+                  href={registerHref}
                   className="inline-flex h-11 items-center justify-center rounded-md bg-accent px-8 text-sm font-medium text-primary shadow-sm transition-colors hover:bg-accent/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
                 >
                   기술 등록하기
