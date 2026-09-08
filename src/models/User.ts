@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export interface IUserSkill {
+  technique: mongoose.Types.ObjectId;
+  status: 'interested' | 'practicing' | 'frequently_used' | 'signature' | null;
+  isFavorite: boolean;
+}
+
 export interface IUserCombo {
   name: string;
   techniques: mongoose.Types.ObjectId[];
@@ -13,11 +19,24 @@ export interface IUser extends Document {
   level: 'white' | 'blue' | 'purple' | 'brown' | 'black';
   stripe: number;
   period?: Date;
-  mySkills: mongoose.Types.ObjectId[];
+  mySkills: IUserSkill[];
   myCombo: IUserCombo[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+const UserSkillSchema = new Schema<IUserSkill>(
+  {
+    technique: { type: Schema.Types.ObjectId, ref: 'Technique', required: true },
+    status: {
+      type: String,
+      enum: ['interested', 'practicing', 'frequently_used', 'signature', null],
+      default: null,
+    },
+    isFavorite: { type: Boolean, default: false },
+  },
+  { _id: false }
+);
 
 const ComboSchema = new Schema<IUserCombo>(
   {
@@ -52,7 +71,7 @@ const UserSchema: Schema = new Schema(
     },
     stripe: { type: Number, min: 0, max: 4, default: 0 },
     period: { type: Date },
-    mySkills: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
+    mySkills: { type: [UserSkillSchema], default: [] },
     myCombo: { type: [ComboSchema], default: [] },
   },
   { timestamps: true }
