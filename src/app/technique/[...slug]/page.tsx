@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import { Edit, Save, X, Trash2, Upload } from 'lucide-react';
@@ -33,16 +34,11 @@ interface Technique {
   updatedAt: string;
 }
 
-// Permission check - currently allows everyone, but can be extended
-function canEditTechnique(/* user?: User */): boolean {
-  // TODO: Add authentication check when auth is implemented
-  // For now, allow everyone to edit
-  return true;
-}
-
 export default function TechniquePage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
+  const canEditTechnique = session?.user?.role === 'admin';
   const [technique, setTechnique] = useState<Technique | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -408,7 +404,7 @@ export default function TechniquePage() {
         <header className="relative mb-8">
           {/* Action Buttons */}
           <div className="absolute top-0 right-0 flex gap-2 z-10">
-            {canEditTechnique() && !isEditing && (
+            {canEditTechnique && !isEditing && (
               <div className="flex items-center rounded-md border border-input bg-background shadow-sm">
                 <button
                   onClick={handleEdit}
