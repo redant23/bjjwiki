@@ -28,7 +28,11 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ success: true, data: user.mySkills });
+    // A tagged technique may have been deleted since; populate() resolves
+    // that entry's `technique` to null, which downstream UI can't render.
+    const skills = user.mySkills.filter((skill) => skill.technique);
+
+    return NextResponse.json({ success: true, data: skills });
   } catch (error) {
     console.error('GET /api/user/me/skills error:', error);
     return NextResponse.json(
