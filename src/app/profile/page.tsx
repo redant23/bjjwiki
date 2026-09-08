@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { MySkillsSection } from '@/components/profile/MySkillsSection';
 
 interface ProfileData {
   email: string;
@@ -94,6 +95,8 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+
+      {profile && <MySkillsSection />}
     </div>
   );
 }
