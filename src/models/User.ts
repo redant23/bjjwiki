@@ -25,6 +25,14 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
+export const MAX_STRIPES_BY_LEVEL: Record<IUser['level'], number> = {
+  white: 4,
+  blue: 4,
+  purple: 4,
+  brown: 4,
+  black: 6,
+};
+
 const UserSkillSchema = new Schema<IUserSkill>(
   {
     technique: { type: Schema.Types.ObjectId, ref: 'Technique', required: true },
@@ -69,7 +77,17 @@ const UserSchema: Schema = new Schema(
       enum: ['white', 'blue', 'purple', 'brown', 'black'],
       default: 'white',
     },
-    stripe: { type: Number, min: 0, max: 4, default: 0 },
+    stripe: {
+      type: Number,
+      min: 0,
+      default: 0,
+      validate: {
+        validator: function (this: IUser, v: number) {
+          return v <= MAX_STRIPES_BY_LEVEL[this.level];
+        },
+        message: '그랄 수가 벨트 등급의 최대치를 초과했습니다.',
+      },
+    },
     period: { type: Date },
     mySkills: { type: [UserSkillSchema], default: [] },
     myCombo: { type: [ComboSchema], default: [] },
