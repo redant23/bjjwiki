@@ -11,6 +11,7 @@ import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { TagInput } from '@/components/ui/TagInput';
+import { SkillStatusControls } from '@/components/technique/SkillStatusControls';
 
 interface Technique {
   _id: string;
@@ -630,6 +631,8 @@ export default function TechniquePage() {
             </div>
           )}
         </header>
+
+        {!isEditing && <SkillStatusControls techniqueId={technique._id} />}
 
         {/* Media */}
         {isEditing ? (

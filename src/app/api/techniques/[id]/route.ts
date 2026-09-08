@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
+import User from '@/models/User';
 import { requireAdmin } from '@/lib/auth';
 
 export async function GET(
@@ -138,6 +139,14 @@ export async function DELETE(
     }
 
     await technique.deleteOne();
+
+    // Deleting a technique otherwise leaves it as an orphaned ref inside
+    // every user's mySkills — invisible on read (filtered out), but still
+    // occupying a signature slot since the cap counts by status alone.
+    await User.updateMany(
+      { 'mySkills.technique': id },
+      { $pull: { mySkills: { technique: id } } }
+    );
 
     return NextResponse.json({ success: true, data: {} });
   } catch (error) {
