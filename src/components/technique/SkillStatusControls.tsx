@@ -26,15 +26,27 @@ export function SkillStatusControls({ techniqueId }: SkillStatusControlsProps) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    setLoaded(false);
+    setSkillStatus(null);
+    setIsFavorite(false);
+    setError('');
+
     async function fetchSkill() {
-      if (sessionStatus !== 'authenticated') return;
+      if (sessionStatus !== 'authenticated') {
+        setLoaded(true);
+        return;
+      }
       try {
         const res = await fetch(`/api/user/me/skills/${techniqueId}`);
         const data = await res.json();
         if (data.success) {
           setSkillStatus(data.data.status);
           setIsFavorite(data.data.isFavorite);
+        } else {
+          setError(data.error || '불러오지 못했습니다.');
         }
+      } catch {
+        setError('오류가 발생했습니다.');
       } finally {
         setLoaded(true);
       }
