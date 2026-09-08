@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
+import User from '@/models/User';
 import { requireAdmin } from '@/lib/auth';
 
 export async function POST(request: Request) {
@@ -16,6 +17,11 @@ export async function POST(request: Request) {
     if (!technique) {
       return NextResponse.json({ error: 'Technique not found' }, { status: 404 });
     }
+
+    await User.updateMany(
+      { 'mySkills.technique': id },
+      { $pull: { mySkills: { technique: id } } }
+    );
 
     return NextResponse.json({ success: true, message: 'Technique rejected and deleted' });
   } catch {
