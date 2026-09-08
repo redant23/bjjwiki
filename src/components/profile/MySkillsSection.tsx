@@ -52,8 +52,12 @@ export function MySkillsSection() {
         body: JSON.stringify(update),
       });
       const data = await res.json();
-      if (!data.success) return;
+      if (!data.success) {
+        setError(data.error || '저장하지 못했습니다.');
+        return;
+      }
 
+      setError('');
       setSkills((prev) => {
         if (!prev) return prev;
         return prev
@@ -73,7 +77,7 @@ export function MySkillsSection() {
     }
   }
 
-  if (error) {
+  if (error && !skills) {
     return (
       <div className="p-4 bg-destructive/10 text-destructive rounded-md mt-6">
         {error}
@@ -90,6 +94,12 @@ export function MySkillsSection() {
   return (
     <div className="mt-10 space-y-8">
       <h2 className="text-2xl font-bold">내 기술</h2>
+
+      {error && (
+        <div className="p-4 bg-destructive/10 text-destructive rounded-md">
+          {error}
+        </div>
+      )}
 
       {skills.length === 0 && (
         <p className="text-muted-foreground">
