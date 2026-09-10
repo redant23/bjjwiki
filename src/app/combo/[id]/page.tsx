@@ -82,6 +82,9 @@ export default function ComboDetailPage() {
         setCombo((prev) =>
           prev ? { ...prev, savedByMe: data.data.saved, saveCount: data.data.saveCount } : prev
         );
+        setError('');
+      } else {
+        setError(data.error || '저장하지 못했습니다.');
       }
     } catch {
       setError('오류가 발생했습니다.');
@@ -92,6 +95,7 @@ export default function ComboDetailPage() {
 
   function handleEdit() {
     if (!combo) return;
+    setError('');
     setEditForm({ name: combo.name, videoUrl: combo.videoUrl || '' });
     setPreviewUrl(combo.photoUrl || '');
     setPhotoFile(null);
@@ -99,6 +103,7 @@ export default function ComboDetailPage() {
   }
 
   function handleCancel() {
+    setError('');
     setIsEditing(false);
     setPhotoFile(null);
     if (combo) setPreviewUrl(combo.photoUrl || '');
@@ -115,6 +120,7 @@ export default function ComboDetailPage() {
       });
       setPhotoFile(compressed);
       setPreviewUrl(URL.createObjectURL(compressed));
+      setError('');
     } catch {
       setError('이미지 압축에 실패했습니다.');
     }
@@ -147,14 +153,19 @@ export default function ComboDetailPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setCombo((prev) => (prev ? { ...prev, ...data.data } : prev));
+        setCombo((prev) =>
+          prev
+            ? { ...prev, name: data.data.name, videoUrl: data.data.videoUrl, photoUrl: data.data.photoUrl }
+            : prev
+        );
         setIsEditing(false);
         setPhotoFile(null);
       } else {
         setError(data.error || '저장하지 못했습니다.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+      console.error(err);
+      setError('오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
