@@ -62,8 +62,9 @@ export async function POST(request: Request) {
 
     await dbConnect();
 
-    const existingCount = await Technique.countDocuments({ _id: { $in: techniqueIds } });
-    if (existingCount !== techniqueIds.length) {
+    const uniqueTechniqueIds = [...new Set(techniqueIds)];
+    const existingCount = await Technique.countDocuments({ _id: { $in: uniqueTechniqueIds } });
+    if (existingCount !== uniqueTechniqueIds.length) {
       return NextResponse.json(
         { success: false, error: '존재하지 않는 기술이 포함되어 있습니다.' },
         { status: 400 }
