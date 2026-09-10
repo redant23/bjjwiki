@@ -39,11 +39,13 @@ export default function ComboListPage() {
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     async function fetchCombos() {
       try {
         const query = sort === 'recent' ? '?sort=recent' : '';
         const res = await fetch(`/api/combos${query}`);
         const data = await res.json();
+        if (cancelled) return;
         if (data.success) {
           setCombos(data.data);
           setError('');
@@ -51,10 +53,15 @@ export default function ComboListPage() {
           setError(data.error || '콤보 목록을 불러오지 못했습니다.');
         }
       } catch {
-        setError('오류가 발생했습니다.');
+        if (!cancelled) {
+          setError('오류가 발생했습니다.');
+        }
       }
     }
     fetchCombos();
+    return () => {
+      cancelled = true;
+    };
   }, [sort]);
 
   async function handleSave(comboId: string) {

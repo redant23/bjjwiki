@@ -131,7 +131,8 @@ export default function ComboDetailPage() {
     setSaving(true);
     setError('');
     try {
-      let photoUrl = combo.photoUrl;
+      let photoUrl: string | undefined = combo.photoUrl;
+      const photoRemoved = !photoFile && !previewUrl;
       if (photoFile) {
         const formData = new FormData();
         formData.append('file', photoFile);
@@ -148,7 +149,7 @@ export default function ComboDetailPage() {
         body: JSON.stringify({
           name: editForm.name,
           videoUrl: editForm.videoUrl.trim() || undefined,
-          photoUrl: photoUrl || undefined,
+          photoUrl: photoRemoved ? '' : (photoUrl || undefined),
         }),
       });
       const data = await res.json();
