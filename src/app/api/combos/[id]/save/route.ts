@@ -30,24 +30,34 @@ export async function POST(
 
     const alreadySaved = user.savedCombos.some((id) => id.toString() === params.id);
 
-    let saveCount: number;
+    let saveCount = combo.saveCount;
 
     if (alreadySaved) {
-      await User.updateOne({ _id: session.user.id }, { $pull: { savedCombos: combo._id } });
-      const decremented = await Combo.findOneAndUpdate(
-        { _id: params.id, saveCount: { $gt: 0 } },
-        { $inc: { saveCount: -1 } },
-        { new: true }
+      const pull = await User.updateOne(
+        { _id: session.user.id },
+        { $pull: { savedCombos: combo._id } }
       );
-      saveCount = decremented ? decremented.saveCount : 0;
+      if (pull.modifiedCount > 0) {
+        const decremented = await Combo.findOneAndUpdate(
+          { _id: params.id, saveCount: { $gt: 0 } },
+          { $inc: { saveCount: -1 } },
+          { new: true }
+        );
+        saveCount = decremented ? decremented.saveCount : 0;
+      }
     } else {
-      await User.updateOne({ _id: session.user.id }, { $addToSet: { savedCombos: combo._id } });
-      const incremented = await Combo.findByIdAndUpdate(
-        params.id,
-        { $inc: { saveCount: 1 } },
-        { new: true }
+      const add = await User.updateOne(
+        { _id: session.user.id },
+        { $addToSet: { savedCombos: combo._id } }
       );
-      saveCount = incremented ? incremented.saveCount : combo.saveCount + 1;
+      if (add.modifiedCount > 0) {
+        const incremented = await Combo.findByIdAndUpdate(
+          params.id,
+          { $inc: { saveCount: 1 } },
+          { new: true }
+        );
+        saveCount = incremented ? incremented.saveCount : combo.saveCount + 1;
+      }
     }
 
     return NextResponse.json({
