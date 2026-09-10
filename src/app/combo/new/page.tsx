@@ -54,8 +54,9 @@ export default function NewComboPage() {
         if (data.success) {
           setResults(data.data);
         }
-      } catch {
-        // 검색 실패는 조용히 무시하고 결과만 비운다
+      } catch (error) {
+        console.error('Failed to search techniques:', error);
+        setResults([]);
       } finally {
         setSearching(false);
       }
@@ -94,7 +95,9 @@ export default function NewComboPage() {
       });
       setPhotoFile(compressed);
       setPreviewUrl(URL.createObjectURL(compressed));
-    } catch {
+      setError('');
+    } catch (error) {
+      console.error('Image compression failed:', error);
       setError('이미지 압축에 실패했습니다.');
     }
   }
@@ -139,7 +142,8 @@ export default function NewComboPage() {
         setError(data.error || '등록하지 못했습니다.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : '오류가 발생했습니다.');
+      console.error(err);
+      setError('오류가 발생했습니다.');
     } finally {
       setSaving(false);
     }
