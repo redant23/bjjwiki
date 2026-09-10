@@ -76,6 +76,7 @@ export default function ComboListPage() {
               )
             : prev
         );
+        setError('');
       } else {
         setError(data.error || '저장하지 못했습니다.');
       }
