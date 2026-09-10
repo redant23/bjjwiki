@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
 import cloudinary from '@/lib/cloudinary';
 import dbConnect from '@/lib/db';
 import ImageModel from '@/models/Image';
-import { requireAdmin } from '@/lib/auth';
+import { authOptions, requireAdmin } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    const { session, error: authError } = await requireAdmin();
-    if (authError) return authError;
-
-    await dbConnect();
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const usage = formData.get('usage') as string;
-    const uploaderType = session!.user.role;
+
+    let uploaderType: 'admin' | 'user';
+
+    if (usage === 'combo_photo') {
+      const session = await getServerSession(authOptions);
+      if (!session) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      uploaderType = session.user.role === 'admin' ? 'admin' : 'user';
+    } else {
+      const { session, error: authError } = await requireAdmin();
+      if (authError) return authError;
+      uploaderType = session!.user.role;
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file uploaded' }, { status: 400 });
     }
+
+    await dbConnect();
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);

@@ -6,11 +6,6 @@ export interface IUserSkill {
   isFavorite: boolean;
 }
 
-export interface IUserCombo {
-  name: string;
-  techniques: mongoose.Types.ObjectId[];
-}
-
 export interface IUser extends Document {
   email: string;
   password: string;
@@ -20,7 +15,7 @@ export interface IUser extends Document {
   stripe: number;
   period?: Date;
   mySkills: IUserSkill[];
-  myCombo: IUserCombo[];
+  savedCombos: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,14 +39,6 @@ const UserSkillSchema = new Schema<IUserSkill>(
     isFavorite: { type: Boolean, default: false },
   },
   { _id: false }
-);
-
-const ComboSchema = new Schema<IUserCombo>(
-  {
-    name: { type: String, required: true },
-    techniques: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
-  },
-  { _id: true }
 );
 
 const UserSchema: Schema = new Schema(
@@ -90,7 +77,7 @@ const UserSchema: Schema = new Schema(
     },
     period: { type: Date },
     mySkills: { type: [UserSkillSchema], default: [] },
-    myCombo: { type: [ComboSchema], default: [] },
+    savedCombos: { type: [{ type: Schema.Types.ObjectId, ref: 'Combo' }], default: [] },
   },
   { timestamps: true }
 );
