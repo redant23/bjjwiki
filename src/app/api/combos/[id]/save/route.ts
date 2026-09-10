@@ -23,27 +23,36 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Combo not found' }, { status: 404 });
     }
 
-    const user = await User.findById(session.user.id);
+    const user = await User.findById(session.user.id).select('savedCombos');
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
     const alreadySaved = user.savedCombos.some((id) => id.toString() === params.id);
 
-    if (alreadySaved) {
-      user.savedCombos = user.savedCombos.filter((id) => id.toString() !== params.id);
-      combo.saveCount = Math.max(0, combo.saveCount - 1);
-    } else {
-      user.savedCombos.push(combo._id);
-      combo.saveCount += 1;
-    }
+    let saveCount: number;
 
-    await user.save();
-    await combo.save();
+    if (alreadySaved) {
+      await User.updateOne({ _id: session.user.id }, { $pull: { savedCombos: combo._id } });
+      const decremented = await Combo.findOneAndUpdate(
+        { _id: params.id, saveCount: { $gt: 0 } },
+        { $inc: { saveCount: -1 } },
+        { new: true }
+      );
+      saveCount = decremented ? decremented.saveCount : 0;
+    } else {
+      await User.updateOne({ _id: session.user.id }, { $addToSet: { savedCombos: combo._id } });
+      const incremented = await Combo.findByIdAndUpdate(
+        params.id,
+        { $inc: { saveCount: 1 } },
+        { new: true }
+      );
+      saveCount = incremented ? incremented.saveCount : combo.saveCount + 1;
+    }
 
     return NextResponse.json({
       success: true,
-      data: { saved: !alreadySaved, saveCount: combo.saveCount },
+      data: { saved: !alreadySaved, saveCount },
     });
   } catch (error) {
     console.error('POST /api/combos/[id]/save error:', error);
