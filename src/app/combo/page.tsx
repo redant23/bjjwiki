@@ -46,6 +46,7 @@ export default function ComboListPage() {
         const data = await res.json();
         if (data.success) {
           setCombos(data.data);
+          setError('');
         } else {
           setError(data.error || '콤보 목록을 불러오지 못했습니다.');
         }
@@ -75,6 +76,8 @@ export default function ComboListPage() {
               )
             : prev
         );
+      } else {
+        setError(data.error || '저장하지 못했습니다.');
       }
     } catch {
       setError('오류가 발생했습니다.');
@@ -156,6 +159,7 @@ export default function ComboListPage() {
                     handleSave(combo._id);
                   }}
                   disabled={savingId === combo._id}
+                  aria-label="콤보 저장"
                   className={`flex items-center gap-1 px-2 py-1 rounded-md text-sm transition-colors ${
                     combo.savedByMe ? 'text-accent' : 'text-muted-foreground hover:text-accent'
                   }`}
