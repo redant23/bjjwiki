@@ -82,24 +82,51 @@ export function TechniqueParentPicker({
       setSearchResults(null);
       return;
     }
+    let cancelled = false;
     const timeoutId = setTimeout(async () => {
       setSearching(true);
       try {
         const res = await fetch(`/api/techniques?search=${encodeURIComponent(query)}&fields=light`);
         const data = await res.json();
+        if (cancelled) return;
         if (data.success) {
           setSearchResults(data.data);
         } else {
           setSearchResults([]);
         }
       } catch {
-        setSearchResults([]);
+        if (!cancelled) {
+          setSearchResults([]);
+        }
       } finally {
-        setSearching(false);
+        if (!cancelled) {
+          setSearching(false);
+        }
       }
     }, 300);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [query]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onClose]);
 
   function isExcluded(t: LightTechnique): boolean {
     if (excludeId && t._id === excludeId) return true;
