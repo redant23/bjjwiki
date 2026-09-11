@@ -229,8 +229,10 @@ export default function TechniquePage() {
       });
       const data = await res.json();
       if (data.success) {
-        router.refresh();
+        // push() before refresh() — see the identical note in
+        // technique/new/page.tsx's handleSubmit for why the order matters.
         router.push('/');
+        router.refresh();
       } else {
         alert('삭제 실패: ' + data.error);
         setDeleting(false);
