@@ -70,7 +70,7 @@ interface TechniqueParentPickerProps {
 
 - 신규: `src/components/ui/TechniqueParentPicker.tsx`
 - 수정: `src/app/technique/new/page.tsx` — `<select>`를 트리거 버튼 + `TechniqueParentPicker`로 교체, 선택된 이름을 표시할 로컬 상태 추가. 기존 `parents` state와 그걸 채우던 `fetchParents` 호출(이 select 전용이었음)은 제거한다.
-- 수정: `src/app/technique/[...slug]/page.tsx` — 수정 모드의 `<select>`(579번째 줄 부근)를 동일하게 교체, `excludeId`/`excludeSlug`로 현재 기술 전달. 기존 `allTechniques` state(이 select 전용이었고, `setAllTechniques`가 어디서도 호출되지 않아 항상 빈 배열이었음 — 사실상 동작하지 않던 코드)는 제거한다.
+- 수정: `src/app/technique/[...slug]/page.tsx` — 수정 모드의 `<select>`(579번째 줄 부근)를 동일하게 교체, `excludeId`/`excludeSlug`로 현재 기술 전달. 기존 `allTechniques` state와 이를 채우는 `fetchAllTechniques`(이 select 전용이었고 자기 자신만 걸러낼 뿐 하위 기술 제외는 없었음)는 제거한다.
 
 ## 6. 범위 밖
 
