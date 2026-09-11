@@ -80,6 +80,7 @@ export function TechniqueParentPicker({
   useEffect(() => {
     if (!query.trim()) {
       setSearchResults(null);
+      setSearching(false);
       return;
     }
     let cancelled = false;
