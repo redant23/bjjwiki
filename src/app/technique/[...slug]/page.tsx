@@ -5,13 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
-import { Edit, Save, X, Trash2, Upload } from 'lucide-react';
+import { Edit, Save, X, Trash2, Upload, ChevronDown } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { TagInput } from '@/components/ui/TagInput';
 import { SkillStatusControls } from '@/components/technique/SkillStatusControls';
+import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 
 interface Technique {
   _id: string;
@@ -47,7 +48,8 @@ export default function TechniquePage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [allTechniques, setAllTechniques] = useState<Technique[]>([]);
+  const [parentName, setParentName] = useState('');
+  const [parentPickerOpen, setParentPickerOpen] = useState(false);
   const [breadcrumbPath, setBreadcrumbPath] = useState<{ name: string; slug: string }[]>([]);
 
   // Edit form state
@@ -124,6 +126,7 @@ export default function TechniquePage() {
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
               thumbnailUrl: detailData.data.thumbnailUrl || '',
             });
+            setParentName(detailData.data.parentId?.name.ko || '');
             setPreviewUrl(detailData.data.thumbnailUrl || '');
           } else {
             setTechnique(tech); // Fallback
@@ -138,21 +141,8 @@ export default function TechniquePage() {
       }
     }
 
-    async function fetchAllTechniques() {
-      try {
-        const res = await fetch('/api/techniques?status=published');
-        const data = await res.json();
-        if (data.success) {
-          setAllTechniques(data.data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch techniques:', err);
-      }
-    }
-
     if (currentSlug) {
       fetchTechnique();
-      fetchAllTechniques();
     }
   }, [currentSlug]);
 
@@ -183,6 +173,7 @@ export default function TechniquePage() {
       videoUrls: technique.videos?.map(v => v.url) || [],
       thumbnailUrl: technique.thumbnailUrl || '',
     });
+    setParentName(technique.parentId?.name?.ko || '');
     setThumbnailFile(null);
     setPreviewUrl(technique.thumbnailUrl || '');
     setIsEditing(false);
@@ -329,6 +320,7 @@ export default function TechniquePage() {
             videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
             thumbnailUrl: detailData.data.thumbnailUrl || '',
           });
+          setParentName(detailData.data.parentId?.name?.ko || '');
           setPreviewUrl(detailData.data.thumbnailUrl || '');
         }
         setIsEditing(false);
@@ -577,21 +569,16 @@ export default function TechniquePage() {
               <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">상위 기술 (Parent)</label>
-                  <select
-                    value={editForm.parentId || ''}
-                    onChange={(e) => setEditForm({ ...editForm, parentId: e.target.value || null })}
-                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  <button
+                    type="button"
+                    onClick={() => setParentPickerOpen(true)}
+                    className="flex w-full items-center justify-between px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring text-sm"
                   >
-                    <option value="">없음 (최상위)</option>
-                    {allTechniques
-                      .filter(t => t._id !== technique?._id) // Prevent selecting self
-                      .sort((a, b) => a.name.ko.localeCompare(b.name.ko))
-                      .map((tech) => (
-                        <option key={tech._id} value={tech._id}>
-                          {tech.name.ko} {tech.name.en ? `(${tech.name.en})` : ''} - Level {tech.level}
-                        </option>
-                      ))}
-                  </select>
+                    <span className={parentName ? '' : 'text-muted-foreground'}>
+                      {parentName || '없음 (최상위)'}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -749,6 +736,18 @@ export default function TechniquePage() {
           </div>
         </div>
       )}
+
+      <TechniqueParentPicker
+        isOpen={parentPickerOpen}
+        onClose={() => setParentPickerOpen(false)}
+        selectedId={editForm.parentId}
+        excludeId={technique?._id}
+        excludeSlug={technique?.slug}
+        onSelect={(selected) => {
+          setEditForm({ ...editForm, parentId: selected?._id || null });
+          setParentName(selected?.name.ko || '');
+        }}
+      />
     </div>
   );
 }
