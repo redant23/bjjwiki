@@ -173,7 +173,7 @@ export default function TechniquePage() {
       videoUrls: technique.videos?.map(v => v.url) || [],
       thumbnailUrl: technique.thumbnailUrl || '',
     });
-    setParentName(technique.parentId?.name.ko || '');
+    setParentName(technique.parentId?.name?.ko || '');
     setThumbnailFile(null);
     setPreviewUrl(technique.thumbnailUrl || '');
     setIsEditing(false);
@@ -320,6 +320,7 @@ export default function TechniquePage() {
             videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
             thumbnailUrl: detailData.data.thumbnailUrl || '',
           });
+          setParentName(detailData.data.parentId?.name?.ko || '');
           setPreviewUrl(detailData.data.thumbnailUrl || '');
         }
         setIsEditing(false);
