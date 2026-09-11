@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import User from '@/models/User';
@@ -92,6 +93,8 @@ export async function PUT(
       runValidators: true,
     });
 
+    revalidateTag('technique-tree', 'max');
+
     return NextResponse.json({ success: true, data: technique });
   } catch (error) {
     console.error('PUT Error:', error);
@@ -147,6 +150,8 @@ export async function DELETE(
       { 'mySkills.technique': id },
       { $pull: { mySkills: { technique: id } } }
     );
+
+    revalidateTag('technique-tree', 'max');
 
     return NextResponse.json({ success: true, data: {} });
   } catch (error) {

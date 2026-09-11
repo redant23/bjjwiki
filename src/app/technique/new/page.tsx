@@ -149,6 +149,7 @@ export default function NewTechniquePage() {
       if (data.success) {
         const slug = data.data.slug;
         const path = [...(data.data.pathSlugs || []), slug].join('/');
+        router.refresh();
         router.push(`/technique/${path}`);
       } else {
         setError(data.error || '기술 생성에 실패했습니다.');

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import rateLimit from '@/lib/rate-limit';
@@ -159,6 +160,8 @@ export async function POST(request: Request) {
         $push: { childrenIds: technique._id }
       });
     }
+
+    revalidateTag('technique-tree', 'max');
 
     return NextResponse.json({ success: true, data: technique }, { status: 201 });
   } catch (error: unknown) {
