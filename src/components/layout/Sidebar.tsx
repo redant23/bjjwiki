@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown, Settings, Check } from 'lucide-react';
@@ -25,13 +25,21 @@ interface SidebarProps {
 export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps) {
   console.log('[Sidebar] Render. initialTree:', initialTree?.length);
   const pathname = usePathname();
+  const router = useRouter();
   const [tree, setTree] = useState<Technique[]>(initialTree || []);
   const [searchQuery, setSearchQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isEditingOrder, setIsEditingOrder] = useState(false);
   const [isSavingOrder, setIsSavingOrder] = useState(false);
 
-
+  // useState(initialTree) only captures the prop's value on mount — this
+  // component stays mounted across client-side navigations (it lives in the
+  // persistent root layout), so without this it would never pick up a fresh
+  // tree even after the server re-renders with new data (e.g. via
+  // router.refresh() following a technique create/update/delete/reorder).
+  useEffect(() => {
+    setTree(initialTree || []);
+  }, [initialTree]);
 
   // Auto-expand based on current path
   useEffect(() => {
@@ -140,11 +148,14 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
     setIsSavingOrder(true);
 
     try {
-      await fetch('/api/techniques/reorder', {
+      const res = await fetch('/api/techniques/reorder', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: updates }),
       });
+      if (res.ok) {
+        router.refresh();
+      }
     } catch (error) {
       console.error('Failed to save order', error);
       // TODO: Revert on error

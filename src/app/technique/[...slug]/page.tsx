@@ -229,6 +229,7 @@ export default function TechniquePage() {
       });
       const data = await res.json();
       if (data.success) {
+        router.refresh();
         router.push('/');
       } else {
         alert('삭제 실패: ' + data.error);
@@ -329,6 +330,7 @@ export default function TechniquePage() {
           setPreviewUrl(detailData.data.thumbnailUrl || '');
         }
         setIsEditing(false);
+        router.refresh();
       } else {
         alert('저장 실패: ' + data.error);
       }
