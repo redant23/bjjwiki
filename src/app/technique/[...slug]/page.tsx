@@ -344,7 +344,7 @@ export default function TechniquePage() {
         const data = await res.json();
         if (data.success) {
           alert('수정 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.');
-          setIsEditing(false);
+          handleCancel();
         } else {
           alert('요청 실패: ' + data.error);
         }
