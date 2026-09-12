@@ -40,8 +40,12 @@ export function NotificationBell() {
 
   const handleNotificationClick = async (notification: NotificationItem) => {
     if (!notification.isRead) {
-      await fetch(`/api/notifications/${notification._id}/read`, { method: 'POST' });
-      fetchNotifications();
+      try {
+        await fetch(`/api/notifications/${notification._id}/read`, { method: 'POST' });
+        fetchNotifications();
+      } catch {
+        // Non-fatal: the notification just won't show as read yet. Still navigate below.
+      }
     }
     setIsOpen(false);
     if (notification.type === 'new_request') {
