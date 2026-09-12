@@ -51,18 +51,22 @@ export async function POST(
     techniqueRequest.reviewNote = reviewNote;
     await techniqueRequest.save();
 
-    await Notification.create({
-      user: techniqueRequest.submittedBy,
-      type: 'request_rejected',
-      message: `요청이 반려되었습니다: ${reviewNote}`,
-      relatedRequestId: techniqueRequest._id,
-      isRead: false,
-    });
+    try {
+      await Notification.create({
+        user: techniqueRequest.submittedBy,
+        type: 'request_rejected',
+        message: `요청이 반려되었습니다: ${reviewNote}`,
+        relatedRequestId: techniqueRequest._id,
+        isRead: false,
+      });
 
-    await Notification.updateMany(
-      { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
-      { $set: { isRead: true } }
-    );
+      await Notification.updateMany(
+        { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
+        { $set: { isRead: true } }
+      );
+    } catch (notifyError) {
+      console.error('Failed to notify submitter of rejection:', notifyError);
+    }
 
     return NextResponse.json({ success: true, data: techniqueRequest });
   } catch (error) {
