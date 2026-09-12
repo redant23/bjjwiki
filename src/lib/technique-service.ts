@@ -1,5 +1,5 @@
 import dbConnect from '@/lib/db';
-import Technique from '@/models/Technique';
+import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
 
 export const getTechniqueTree = unstable_cache(
@@ -44,3 +44,134 @@ export const getTechniqueTree = unstable_cache(
   ['technique-tree'],
   { revalidate: 3600, tags: ['technique-tree'] }
 );
+
+// 일반 계정의 등록/수정 요청 payload에서 허용할 필드 목록.
+// TechniqueRequest 승인 시 이 필드 밖의 값(status, order, viewCount, createdBy 등)은
+// 절대 라이브 데이터에 반영되지 않는다.
+export const EDITABLE_TECHNIQUE_FIELDS = [
+  'name',
+  'aka',
+  'description',
+  'type',
+  'primaryRole',
+  'roleTags',
+  'difficulty',
+  'isCorePosition',
+  'positionType',
+  'parentId',
+  'videos',
+  'images',
+  'thumbnailUrl',
+] as const;
+
+export function pickTechniquePayload(body: Record<string, unknown>): Record<string, unknown> {
+  const picked: Record<string, unknown> = {};
+  for (const field of EDITABLE_TECHNIQUE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      picked[field] = body[field];
+    }
+  }
+  return picked;
+}
+
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')     // Replace spaces with -
+    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+    .replace(/\-\-+/g, '-');  // Replace multiple - with single -
+}
+
+export async function createTechniqueFromPayload(payload: Record<string, unknown>): Promise<ITechnique> {
+  await dbConnect();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: any = { ...payload };
+
+  // 1. Generate Slug if not provided
+  if (!body.slug) {
+    const nameForSlug = body.name?.en || body.name?.ko || 'untitled';
+    let generatedSlug = slugify(nameForSlug);
+
+    let counter = 1;
+    while (await Technique.findOne({ slug: generatedSlug })) {
+      generatedSlug = `${slugify(nameForSlug)}-${counter}`;
+      counter++;
+    }
+    body.slug = generatedSlug;
+  }
+
+  // 2. Handle Hierarchy
+  if (body.parentId) {
+    const parent = await Technique.findById(body.parentId);
+    if (!parent) {
+      throw new Error('Parent technique not found');
+    }
+    body.level = (parent.level || 1) + 1;
+    body.pathSlugs = [...(parent.pathSlugs || []), parent.slug];
+  } else {
+    body.level = 1;
+    body.pathSlugs = [];
+  }
+
+  // 3. Create Technique
+  const technique = (await Technique.create({
+    ...body,
+    status: body.status || 'draft',
+  })) as unknown as ITechnique;
+
+  // 4. Update Parent's childrenIds
+  if (body.parentId) {
+    await Technique.findByIdAndUpdate(body.parentId, {
+      $push: { childrenIds: technique._id },
+    });
+  }
+
+  return technique;
+}
+
+export async function applyTechniqueEdit(
+  id: string,
+  payload: Record<string, unknown>
+): Promise<ITechnique | null> {
+  await dbConnect();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const body: any = { ...payload };
+
+  const currentTechnique = await Technique.findById(id);
+  if (!currentTechnique) {
+    return null;
+  }
+
+  // Handle Parent Change
+  if (body.parentId && body.parentId !== currentTechnique.parentId?.toString()) {
+    if (currentTechnique.parentId) {
+      await Technique.findByIdAndUpdate(currentTechnique.parentId, {
+        $pull: { childrenIds: id },
+      });
+    }
+
+    const newParent = await Technique.findById(body.parentId);
+    if (newParent) {
+      await Technique.findByIdAndUpdate(body.parentId, {
+        $push: { childrenIds: id },
+      });
+      body.level = (newParent.level || 1) + 1;
+      body.pathSlugs = [...(newParent.pathSlugs || []), newParent.slug];
+    }
+  } else if (body.parentId === null && currentTechnique.parentId) {
+    await Technique.findByIdAndUpdate(currentTechnique.parentId, {
+      $pull: { childrenIds: id },
+    });
+    body.level = 1;
+    body.pathSlugs = [];
+  }
+
+  const technique = await Technique.findByIdAndUpdate(id, body, {
+    new: true,
+    runValidators: true,
+  });
+
+  return technique;
+}

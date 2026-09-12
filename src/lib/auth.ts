@@ -82,3 +82,16 @@ export async function requireAdmin(): Promise<{ session: Session | null; error: 
 
   return { session, error: null };
 }
+
+export async function requireAuth(): Promise<{ session: Session | null; error: NextResponse | null }> {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    return {
+      session: null,
+      error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }),
+    };
+  }
+
+  return { session, error: null };
+}

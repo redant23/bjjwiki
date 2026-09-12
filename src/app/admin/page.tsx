@@ -5,69 +5,60 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-interface Technique {
+interface TechniqueRequestListItem {
   _id: string;
-  name: string;
-  category: string;
-  status: string;
+  type: 'create' | 'edit';
+  status: 'pending' | 'approved' | 'rejected';
+  payload: { name?: { ko?: string; en?: string } };
+  targetTechniqueId?: { _id: string; name: { ko: string }; slug: string } | null;
+  submittedBy: { nickname: string; email: string };
   createdAt: string;
 }
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [pendingTechniques, setPendingTechniques] = useState<Technique[]>([]);
+  const [requests, setRequests] = useState<TechniqueRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
+    } else if (status === 'authenticated' && session?.user?.role !== 'admin') {
+      router.push('/');
     }
-  }, [status, router]);
+  }, [status, session, router]);
 
   useEffect(() => {
     async function fetchPending() {
-      if (status === 'authenticated') {
+      if (status === 'authenticated' && session?.user?.role === 'admin') {
         try {
-          const res = await fetch('/api/techniques?status=pending');
+          setError('');
+          const res = await fetch('/api/technique-requests?status=pending');
           const data = await res.json();
           if (data.success) {
-            setPendingTechniques(data.data);
+            setRequests(data.data);
+          } else {
+            setError(data.error || '요청 목록을 불러오지 못했습니다.');
           }
-        } catch (error) {
-          console.error('Failed to fetch pending techniques');
+        } catch (err) {
+          console.error('Failed to fetch pending requests', err);
+          setError('요청 목록을 불러오지 못했습니다.');
         } finally {
           setLoading(false);
         }
       }
     }
     fetchPending();
-  }, [status]);
-
-  const handleAction = async (id: string, action: 'approve' | 'reject') => {
-    try {
-      const res = await fetch(`/api/admin/${action}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-
-      if (res.ok) {
-        setPendingTechniques((prev) => prev.filter((t) => t._id !== id));
-      } else {
-        alert(`Failed to ${action} technique`);
-      }
-    } catch (error) {
-      alert('An error occurred');
-    }
-  };
+  }, [status, session]);
 
   if (status === 'loading' || loading) {
     return <div className="p-8">Loading...</div>;
   }
 
-  if (status === 'unauthenticated') {
-    return null; // Will redirect
+  if (status !== 'authenticated' || session?.user?.role !== 'admin') {
+    return null;
   }
 
   return (
@@ -88,47 +79,47 @@ export default function AdminDashboard() {
       </div>
 
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Pending Reviews</h2>
+        <h2 className="text-xl font-semibold">대기 중인 요청</h2>
 
-        {pendingTechniques.length === 0 ? (
-          <p className="text-muted-foreground">No pending techniques to review.</p>
+        {error && (
+          <div className="p-4 bg-destructive/10 text-destructive rounded-md">
+            {error}
+          </div>
+        )}
+
+        {!error && requests.length === 0 ? (
+          <p className="text-muted-foreground">검토할 요청이 없습니다.</p>
         ) : (
           <div className="rounded-md border">
             <div className="relative w-full overflow-auto">
               <table className="w-full caption-bottom text-sm">
                 <thead className="[&_tr]:border-b">
-                  <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Category</th>
-                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Submitted</th>
-                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
+                  <tr className="border-b transition-colors hover:bg-muted/50">
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">유형</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">기술명</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">제출자</th>
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">제출일</th>
+                    <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">액션</th>
                   </tr>
                 </thead>
                 <tbody className="[&_tr:last-child]:border-0">
-                  {pendingTechniques.map((technique) => (
-                    <tr key={technique._id} className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
-                      <td className="p-4 align-middle font-medium">
-                        <Link href={`/technique/${technique._id}`} className="hover:underline">
-                          {technique.name}
-                        </Link>
+                  {requests.map((req) => (
+                    <tr key={req._id} className="border-b transition-colors hover:bg-muted/50">
+                      <td className="p-4 align-middle">
+                        {req.type === 'create' ? '신규 등록' : '수정'}
                       </td>
-                      <td className="p-4 align-middle">{technique.category}</td>
-                      <td className="p-4 align-middle">{new Date(technique.createdAt).toLocaleDateString()}</td>
+                      <td className="p-4 align-middle font-medium">
+                        {req.targetTechniqueId?.name.ko || req.payload.name?.ko || '(제목 없음)'}
+                      </td>
+                      <td className="p-4 align-middle">{req.submittedBy.nickname}</td>
+                      <td className="p-4 align-middle">{new Date(req.createdAt).toLocaleDateString()}</td>
                       <td className="p-4 align-middle text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => handleAction(technique._id, 'approve')}
-                            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white hover:bg-green-700 h-9 px-3"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleAction(technique._id, 'reject')}
-                            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-red-600 text-white hover:bg-red-700 h-9 px-3"
-                          >
-                            Reject
-                          </button>
-                        </div>
+                        <Link
+                          href={`/admin/requests/${req._id}`}
+                          className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3"
+                        >
+                          검토하기
+                        </Link>
                       </td>
                     </tr>
                   ))}

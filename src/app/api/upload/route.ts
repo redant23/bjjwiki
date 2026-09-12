@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import cloudinary from '@/lib/cloudinary';
 import dbConnect from '@/lib/db';
 import ImageModel from '@/models/Image';
-import { authOptions, requireAdmin } from '@/lib/auth';
+import { authOptions, requireAuth } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       }
       uploaderType = session.user.role === 'admin' ? 'admin' : 'user';
     } else {
-      const { session, error: authError } = await requireAdmin();
+      const { session, error: authError } = await requireAuth();
       if (authError) return authError;
       uploaderType = session!.user.role;
     }

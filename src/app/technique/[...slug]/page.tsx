@@ -40,7 +40,6 @@ export default function TechniquePage() {
   const params = useParams();
   const router = useRouter();
   const { data: session } = useSession();
-  const canEditTechnique = session?.user?.role === 'admin';
   const [technique, setTechnique] = useState<Technique | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -265,68 +264,90 @@ export default function TechniquePage() {
         }
       }
 
-      const res = await fetch(`/api/techniques/${technique._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
+      const payload = {
+        name: {
+          ko: editForm.name.ko,
+          en: editForm.name.en || undefined,
         },
-        body: JSON.stringify({
-          name: {
-            ko: editForm.name.ko,
-            en: editForm.name.en || undefined,
-          },
-          description: {
-            ko: editForm.description.ko,
-            en: editForm.description.en || undefined,
-          },
-          aka: {
-            ko: editForm.aka.ko,
-            en: editForm.aka.en.length > 0 ? editForm.aka.en : undefined,
-          },
-          type: editForm.type,
-          primaryRole: editForm.primaryRole,
-          roleTags: editForm.roleTags.split(',').map(s => s.trim()).filter(Boolean),
-          parentId: editForm.parentId || null,
-          videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
-          thumbnailUrl: finalImageUrl,
-        }),
-      });
+        description: {
+          ko: editForm.description.ko,
+          en: editForm.description.en || undefined,
+        },
+        aka: {
+          ko: editForm.aka.ko,
+          en: editForm.aka.en.length > 0 ? editForm.aka.en : undefined,
+        },
+        type: editForm.type,
+        primaryRole: editForm.primaryRole,
+        roleTags: editForm.roleTags.split(',').map(s => s.trim()).filter(Boolean),
+        parentId: editForm.parentId || null,
+        videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
+        thumbnailUrl: finalImageUrl,
+      };
 
-      const data = await res.json();
+      if (isAdmin) {
+        const res = await fetch(`/api/techniques/${technique._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (data.success) {
-        // Refresh the technique data
-        const detailRes = await fetch(`/api/techniques/${technique._id}`);
-        const detailData = await detailRes.json();
-        if (detailData.success) {
-          setTechnique(detailData.data);
-          setEditForm({
-            name: {
-              ko: detailData.data.name.ko,
-              en: detailData.data.name.en || ''
-            },
-            description: {
-              ko: detailData.data.description.ko,
-              en: detailData.data.description.en || ''
-            },
-            aka: {
-              ko: detailData.data.aka.ko || [],
-              en: detailData.data.aka.en || [],
-            },
-            type: detailData.data.type || 'both',
-            primaryRole: detailData.data.primaryRole || 'position',
-            roleTags: detailData.data.roleTags?.join(', ') || '',
-            parentId: detailData.data.parentId?._id || null,
-            videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
-            thumbnailUrl: detailData.data.thumbnailUrl || '',
-          });
-          setParentName(detailData.data.parentId?.name?.ko || '');
-          setPreviewUrl(detailData.data.thumbnailUrl || '');
+        const data = await res.json();
+
+        if (data.success) {
+          // Refresh the technique data
+          const detailRes = await fetch(`/api/techniques/${technique._id}`);
+          const detailData = await detailRes.json();
+          if (detailData.success) {
+            setTechnique(detailData.data);
+            setEditForm({
+              name: {
+                ko: detailData.data.name.ko,
+                en: detailData.data.name.en || ''
+              },
+              description: {
+                ko: detailData.data.description.ko,
+                en: detailData.data.description.en || ''
+              },
+              aka: {
+                ko: detailData.data.aka.ko || [],
+                en: detailData.data.aka.en || [],
+              },
+              type: detailData.data.type || 'both',
+              primaryRole: detailData.data.primaryRole || 'position',
+              roleTags: detailData.data.roleTags?.join(', ') || '',
+              parentId: detailData.data.parentId?._id || null,
+              videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
+              thumbnailUrl: detailData.data.thumbnailUrl || '',
+            });
+            setParentName(detailData.data.parentId?.name?.ko || '');
+            setPreviewUrl(detailData.data.thumbnailUrl || '');
+          }
+          setIsEditing(false);
+          router.refresh();
+        } else {
+          alert('저장 실패: ' + data.error);
         }
-        setIsEditing(false);
-        router.refresh();
       } else {
-        alert('저장 실패: ' + data.error);
+        const res = await fetch('/api/technique-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'edit',
+            targetTechniqueId: technique._id,
+            payload,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert('수정 요청이 접수되었습니다. 관리자 확인 후 반영됩니다.');
+          handleCancel();
+        } else {
+          alert('요청 실패: ' + data.error);
+        }
       }
     } catch (err) {
       alert('저장 중 오류가 발생했습니다.');
@@ -386,6 +407,9 @@ export default function TechniquePage() {
     return map[type] || type;
   };
 
+  const canEdit = !!session;
+  const isAdmin = session?.user?.role === 'admin';
+
   return (
     <div className="w-full">
       {/* Breadcrumbs */}
@@ -401,23 +425,27 @@ export default function TechniquePage() {
         <header className="relative mb-8">
           {/* Action Buttons */}
           <div className="absolute top-0 right-0 flex gap-2 z-10">
-            {canEditTechnique && !isEditing && (
+            {canEdit && !isEditing && (
               <div className="flex items-center rounded-md border border-input bg-background shadow-sm">
                 <button
                   onClick={handleEdit}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors border-r border-input last:border-0 rounded-l-md"
+                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors rounded-l-md ${
+                    isAdmin ? 'border-r border-input' : 'rounded-r-md'
+                  }`}
                 >
                   <Edit className="h-3.5 w-3.5" />
                   수정
                 </button>
-                <button
-                  onClick={handleDeleteClick}
-                  disabled={deleting}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 rounded-r-md"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  삭제
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleDeleteClick}
+                    disabled={deleting}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 rounded-r-md"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    삭제
+                  </button>
+                )}
               </div>
             )}
 

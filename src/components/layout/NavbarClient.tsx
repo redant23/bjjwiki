@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { SearchModal } from '@/components/ui/SearchModal';
 import { Sidebar } from '@/components/layout/Sidebar';
+import { NotificationBell } from '@/components/layout/NotificationBell';
 
 interface Technique {
   _id: string;
@@ -25,7 +26,7 @@ interface NavbarClientProps {
 
 export function NavbarClient({ initialTree }: NavbarClientProps) {
   const { theme, setTheme } = useTheme();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -125,8 +126,7 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
                 )}
               </button>
             )}
-            {(status === 'unauthenticated' ||
-              (status === 'authenticated' && session?.user?.role === 'admin')) && (
+            {status !== 'loading' && (
               <Link
                 href={status === 'unauthenticated' ? '/auth/signup' : '/technique/new'}
                 className="inline-flex text-primary items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-accent text-accent-foreground hover:bg-accent/90 h-9 px-4 py-2"
@@ -136,6 +136,7 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
                 <span className="sm:hidden">등록</span>
               </Link>
             )}
+            {status === 'authenticated' && <NotificationBell />}
             {status === 'authenticated' && (
               <>
                 <Link

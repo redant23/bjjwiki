@@ -1,26 +1,15 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import dbConnect from '@/lib/db';
-import Technique, { ITechnique } from '@/models/Technique';
+import Technique from '@/models/Technique';
 import rateLimit from '@/lib/rate-limit';
-import mongoose from 'mongoose';
 import { requireAdmin } from '@/lib/auth';
+import { createTechniqueFromPayload } from '@/lib/technique-service';
 
 const limiter = rateLimit({
   interval: 60 * 1000, // 60 seconds
   uniqueTokenPerInterval: 500, // Max 500 users per second
 });
-
-// Simple slugify function
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-');  // Replace multiple - with single -
-}
 
 export async function GET(request: Request) {
   try {
@@ -115,51 +104,11 @@ export async function POST(request: Request) {
       );
     }
 
-    await dbConnect();
     const body = await request.json();
-
-    // 1. Generate Slug if not provided
-    if (!body.slug) {
-      const nameForSlug = body.name?.en || body.name?.ko || 'untitled';
-      let generatedSlug = slugify(nameForSlug);
-
-      // Ensure uniqueness (simple check)
-      let counter = 1;
-      while (await Technique.findOne({ slug: generatedSlug })) {
-        generatedSlug = `${slugify(nameForSlug)}-${counter}`;
-        counter++;
-      }
-      body.slug = generatedSlug;
-    }
-
-    // 2. Handle Hierarchy
-    if (body.parentId) {
-      const parent = await Technique.findById(body.parentId);
-      if (!parent) {
-        return NextResponse.json(
-          { success: false, error: 'Parent technique not found' },
-          { status: 400 }
-        );
-      }
-      body.level = (parent.level || 1) + 1;
-      body.pathSlugs = [...(parent.pathSlugs || []), parent.slug];
-    } else {
-      body.level = 1;
-      body.pathSlugs = [];
-    }
-
-    // 3. Create Technique
-    const technique = await Technique.create({
+    const technique = await createTechniqueFromPayload({
       ...body,
-      status: body.status || 'draft', // Default to draft
-    }) as unknown as ITechnique;
-
-    // 4. Update Parent's childrenIds
-    if (body.parentId) {
-      await Technique.findByIdAndUpdate(body.parentId, {
-        $push: { childrenIds: technique._id }
-      });
-    }
+      status: body.status || 'draft',
+    });
 
     revalidateTag('technique-tree', 'max');
 

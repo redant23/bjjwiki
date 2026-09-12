@@ -4,6 +4,7 @@ import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import User from '@/models/User';
 import { requireAdmin } from '@/lib/auth';
+import { applyTechniqueEdit } from '@/lib/technique-service';
 
 export async function GET(
   request: Request,
@@ -44,54 +45,15 @@ export async function PUT(
     const { error: authError } = await requireAdmin();
     if (authError) return authError;
 
-    await dbConnect();
     const body = await request.json();
-    const id = params.id;
+    const technique = await applyTechniqueEdit(params.id, body);
 
-    const currentTechnique = await Technique.findById(id);
-    if (!currentTechnique) {
+    if (!technique) {
       return NextResponse.json(
         { success: false, error: 'Technique not found' },
         { status: 404 }
       );
     }
-
-    // Handle Parent Change
-    if (body.parentId && body.parentId !== currentTechnique.parentId?.toString()) {
-      // 1. Remove from old parent
-      if (currentTechnique.parentId) {
-        await Technique.findByIdAndUpdate(currentTechnique.parentId, {
-          $pull: { childrenIds: id }
-        });
-      }
-
-      // 2. Add to new parent
-      const newParent = await Technique.findById(body.parentId);
-      if (newParent) {
-        await Technique.findByIdAndUpdate(body.parentId, {
-          $push: { childrenIds: id }
-        });
-
-        // 3. Update level and pathSlugs
-        body.level = (newParent.level || 1) + 1;
-        body.pathSlugs = [...(newParent.pathSlugs || []), newParent.slug];
-
-        // TODO: Recursively update children's pathSlugs/level if needed
-        // For now, we assume this is a leaf node or user accepts inconsistency until re-save
-      }
-    } else if (body.parentId === null && currentTechnique.parentId) {
-      // Moved to root
-      await Technique.findByIdAndUpdate(currentTechnique.parentId, {
-        $pull: { childrenIds: id }
-      });
-      body.level = 1;
-      body.pathSlugs = [];
-    }
-
-    const technique = await Technique.findByIdAndUpdate(id, body, {
-      new: true,
-      runValidators: true,
-    });
 
     revalidateTag('technique-tree', 'max');
 
