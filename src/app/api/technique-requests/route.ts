@@ -88,20 +88,24 @@ export async function POST(request: Request) {
       submittedBy: new mongoose.Types.ObjectId(session!.user.id),
     });
 
-    const admins = await User.find({ role: 'admin' }).select('_id');
-    if (admins.length > 0) {
-      await Notification.insertMany(
-        admins.map((admin) => ({
-          user: admin._id,
-          type: 'new_request' as const,
-          message:
-            body.type === 'create'
-              ? '새로운 기술 등록 요청이 도착했습니다.'
-              : '새로운 기술 수정 요청이 도착했습니다.',
-          relatedRequestId: techniqueRequest._id,
-          isRead: false,
-        }))
-      );
+    try {
+      const admins = await User.find({ role: 'admin' }).select('_id');
+      if (admins.length > 0) {
+        await Notification.insertMany(
+          admins.map((admin) => ({
+            user: admin._id,
+            type: 'new_request' as const,
+            message:
+              body.type === 'create'
+                ? '새로운 기술 등록 요청이 도착했습니다.'
+                : '새로운 기술 수정 요청이 도착했습니다.',
+            relatedRequestId: techniqueRequest._id,
+            isRead: false,
+          }))
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to notify admins of new technique request:', notifyError);
     }
 
     return NextResponse.json({ success: true, data: techniqueRequest }, { status: 201 });
