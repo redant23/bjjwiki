@@ -137,7 +137,13 @@ export default function NewTechniquePage() {
         if (data.success) {
           const slug = data.data.slug;
           const path = [...(data.data.pathSlugs || []), slug].join('/');
+          // Order matters: refresh() before push() gets discarded outright —
+          // Next.js's router cancels a pending refresh as soon as a navigate
+          // is dispatched. push() first, then refresh() queues the refresh to
+          // run after the navigation lands, so it actually refetches the
+          // sidebar's data for the new page.
           router.push(`/technique/${path}`);
+          router.refresh();
         } else {
           setError(data.error || '기술 생성에 실패했습니다.');
         }
