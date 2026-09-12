@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Edit, Save, X } from 'lucide-react';
 import { MySkillsSection } from '@/components/profile/MySkillsSection';
+import { MyRequestsSection } from '@/components/profile/MyRequestsSection';
 
 interface ProfileData {
   email: string;
@@ -284,6 +285,7 @@ export default function ProfilePage() {
       )}
 
       {profile && <MySkillsSection />}
+      {profile && <MyRequestsSection />}
     </div>
   );
 }
