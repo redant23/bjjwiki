@@ -80,6 +80,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (body.type === 'create') {
+      const name = payload.name as { ko?: string } | undefined;
+      const description = payload.description as { ko?: string } | undefined;
+      if (!name?.ko?.trim() || !description?.ko?.trim()) {
+        return NextResponse.json(
+          { success: false, error: '이름과 설명을 입력해주세요.' },
+          { status: 400 }
+        );
+      }
+    }
+
     const techniqueRequest = await TechniqueRequest.create({
       type: body.type,
       targetTechniqueId,
