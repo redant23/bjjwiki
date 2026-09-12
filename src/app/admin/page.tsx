@@ -34,6 +34,7 @@ export default function AdminDashboard() {
     async function fetchPending() {
       if (status === 'authenticated' && session?.user?.role === 'admin') {
         try {
+          setError('');
           const res = await fetch('/api/technique-requests?status=pending');
           const data = await res.json();
           if (data.success) {
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {requests.length === 0 ? (
+        {!error && requests.length === 0 ? (
           <p className="text-muted-foreground">검토할 요청이 없습니다.</p>
         ) : (
           <div className="rounded-md border">
