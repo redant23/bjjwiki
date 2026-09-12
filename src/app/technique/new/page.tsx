@@ -40,16 +40,16 @@ export default function NewTechniquePage() {
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
 
   useEffect(() => {
-    if (status !== 'loading' && session?.user?.role !== 'admin') {
-      router.push('/');
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
     }
-  }, [status, session, router]);
+  }, [status, router]);
 
   if (status === 'loading') {
     return <div className="p-8">Loading...</div>;
   }
 
-  if (session?.user?.role !== 'admin') {
+  if (status === 'unauthenticated') {
     return null;
   }
 
@@ -122,28 +122,39 @@ export default function NewTechniquePage() {
         videos: formData.videoUrls.filter(url => url.trim()).map(url => ({ url })),
         images: finalImageUrl ? [{ url: finalImageUrl, isPrimary: true }] : [],
         thumbnailUrl: finalImageUrl,
-        status: 'published', // Auto publish for now for ease of testing
       };
 
-      const res = await fetch('/api/techniques', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const isAdmin = session?.user?.role === 'admin';
 
-      const data = await res.json();
-      if (data.success) {
-        const slug = data.data.slug;
-        const path = [...(data.data.pathSlugs || []), slug].join('/');
-        // Order matters: refresh() before push() gets discarded outright —
-        // Next.js's router cancels a pending refresh as soon as a navigate
-        // is dispatched. push() first, then refresh() queues the refresh to
-        // run after the navigation lands, so it actually refetches the
-        // sidebar's data for the new page.
-        router.push(`/technique/${path}`);
-        router.refresh();
+      if (isAdmin) {
+        const res = await fetch('/api/techniques', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, status: 'published' }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const slug = data.data.slug;
+          const path = [...(data.data.pathSlugs || []), slug].join('/');
+          router.push(`/technique/${path}`);
+        } else {
+          setError(data.error || '기술 생성에 실패했습니다.');
+        }
       } else {
-        setError(data.error || '기술 생성에 실패했습니다.');
+        const res = await fetch('/api/technique-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'create', payload }),
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          alert('등록 요청이 접수되었습니다. 관리자 확인 후 게시됩니다.');
+          router.push('/profile');
+        } else {
+          setError(data.error || '등록 요청에 실패했습니다.');
+        }
       }
     } catch {
       setError('오류가 발생했습니다.');
@@ -164,7 +175,11 @@ export default function NewTechniquePage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">새 기술 등록</h1>
-          <p className="text-muted-foreground">데이터베이스에 새로운 기술을 추가합니다.</p>
+          <p className="text-muted-foreground">
+            {session?.user?.role === 'admin'
+              ? '데이터베이스에 새로운 기술을 추가합니다.'
+              : '등록 요청을 제출합니다. 관리자 확인 후 게시됩니다.'}
+          </p>
         </div>
 
         {error && (
