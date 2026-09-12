@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { ChevronLeft, Upload, X } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Upload, X } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { TagInput } from '@/components/ui/TagInput';
+import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -35,23 +36,8 @@ export default function NewTechniquePage() {
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
-  const [parents, setParents] = useState<{ _id: string, name: { ko: string } }[]>([]);
-
-  useEffect(() => {
-    // Fetch potential parents (all techniques for now, or filter by positions)
-    async function fetchParents() {
-      try {
-        const res = await fetch('/api/techniques?status=published');
-        const data = await res.json();
-        if (data.success) {
-          setParents(data.data);
-        }
-      } catch {
-        console.error('Failed to fetch parents');
-      }
-    }
-    fetchParents();
-  }, []);
+  const [parentName, setParentName] = useState('');
+  const [parentPickerOpen, setParentPickerOpen] = useState(false);
 
   useEffect(() => {
     if (status !== 'loading' && session?.user?.role !== 'admin') {
@@ -149,7 +135,13 @@ export default function NewTechniquePage() {
       if (data.success) {
         const slug = data.data.slug;
         const path = [...(data.data.pathSlugs || []), slug].join('/');
+        // Order matters: refresh() before push() gets discarded outright —
+        // Next.js's router cancels a pending refresh as soon as a navigate
+        // is dispatched. push() first, then refresh() queues the refresh to
+        // run after the navigation lands, so it actually refetches the
+        // sidebar's data for the new page.
         router.push(`/technique/${path}`);
+        router.refresh();
       } else {
         setError(data.error || '기술 생성에 실패했습니다.');
       }
@@ -310,18 +302,16 @@ export default function NewTechniquePage() {
 
             <div className="grid gap-2">
               <label className="text-sm font-medium">상위 기술 (선택)</label>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.parentId}
-                onChange={e => setFormData({ ...formData, parentId: e.target.value })}
+              <button
+                type="button"
+                onClick={() => setParentPickerOpen(true)}
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
-                <option value="">없음 (최상위)</option>
-                {parents.map(p => (
-                  <option key={p._id} value={p._id}>
-                    {p.name.ko}
-                  </option>
-                ))}
-              </select>
+                <span className={parentName ? '' : 'text-muted-foreground'}>
+                  {parentName || '없음 (최상위)'}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
           </div>
 
@@ -352,6 +342,16 @@ export default function NewTechniquePage() {
           </button>
         </form>
       </div>
+
+      <TechniqueParentPicker
+        isOpen={parentPickerOpen}
+        onClose={() => setParentPickerOpen(false)}
+        selectedId={formData.parentId || null}
+        onSelect={(technique) => {
+          setFormData({ ...formData, parentId: technique?._id || '' });
+          setParentName(technique?.name.ko || '');
+        }}
+      />
     </div>
   );
 }

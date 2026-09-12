@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import { requireAdmin } from '@/lib/auth';
@@ -29,6 +30,7 @@ export async function PUT(request: Request) {
 
     if (operations.length > 0) {
       await Technique.bulkWrite(operations);
+      revalidateTag('technique-tree', 'max');
     }
 
     return NextResponse.json({ success: true });

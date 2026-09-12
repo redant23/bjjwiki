@@ -78,6 +78,16 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
             </Link>
           </div>
 
+          {/* Primary Nav (Desktop) */}
+          <nav className="hidden md:flex items-center gap-1 mr-4">
+            <Link
+              href="/combo"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3"
+            >
+              콤보
+            </Link>
+          </nav>
+
           {/* Search Bar (Desktop) */}
           <div className="hidden md:flex flex-1 items-center justify-center mx-auto">
             <button
@@ -157,6 +167,15 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
       {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 bg-background md:hidden pt-14 animate-in slide-in-from-left-1/2 duration-200">
+          <div className="px-4 py-3 border-b border-border">
+            <Link
+              href="/combo"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="block text-sm font-medium py-2"
+            >
+              콤보
+            </Link>
+          </div>
           <Sidebar mobile onLinkClick={() => setIsMobileMenuOpen(false)} initialTree={initialTree} />
         </div>
       )}
