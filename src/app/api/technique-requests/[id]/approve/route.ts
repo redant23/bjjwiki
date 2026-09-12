@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import TechniqueRequest from '@/models/TechniqueRequest';
@@ -43,6 +44,8 @@ export async function POST(
         ...techniqueRequest.payload,
         status: 'published',
       });
+
+      revalidateTag('technique-tree', 'max');
     } else {
       const targetId = techniqueRequest.targetTechniqueId?.toString();
       if (!targetId) {
@@ -60,46 +63,56 @@ export async function POST(
         techniqueRequest.reviewNote = '대상 기술이 삭제되어 자동으로 반려되었습니다.';
         await techniqueRequest.save();
 
-        await Notification.create({
-          user: techniqueRequest.submittedBy,
-          type: 'request_rejected',
-          message: `수정 요청이 반려되었습니다: ${techniqueRequest.reviewNote}`,
-          relatedRequestId: techniqueRequest._id,
-          isRead: false,
-        });
+        try {
+          await Notification.create({
+            user: techniqueRequest.submittedBy,
+            type: 'request_rejected',
+            message: `수정 요청이 반려되었습니다: ${techniqueRequest.reviewNote}`,
+            relatedRequestId: techniqueRequest._id,
+            isRead: false,
+          });
 
-        await Notification.updateMany(
-          { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
-          { $set: { isRead: true } }
-        );
+          await Notification.updateMany(
+            { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
+            { $set: { isRead: true } }
+          );
+        } catch (notifyError) {
+          console.error('Failed to notify submitter of auto-rejection:', notifyError);
+        }
 
         return NextResponse.json(
           { success: false, error: techniqueRequest.reviewNote },
           { status: 409 }
         );
       }
+
+      revalidateTag('technique-tree', 'max');
     }
 
     techniqueRequest.status = 'approved';
     techniqueRequest.reviewedBy = new mongoose.Types.ObjectId(session!.user.id);
     await techniqueRequest.save();
 
-    await Notification.create({
-      user: techniqueRequest.submittedBy,
-      type: 'request_approved',
-      message:
-        techniqueRequest.type === 'create'
-          ? '등록 요청하신 기술이 승인되어 게시되었습니다.'
-          : '수정 요청하신 내용이 승인되어 반영되었습니다.',
-      relatedRequestId: techniqueRequest._id,
-      isRead: false,
-    });
+    try {
+      await Notification.create({
+        user: techniqueRequest.submittedBy,
+        type: 'request_approved',
+        message:
+          techniqueRequest.type === 'create'
+            ? '등록 요청하신 기술이 승인되어 게시되었습니다.'
+            : '수정 요청하신 내용이 승인되어 반영되었습니다.',
+        relatedRequestId: techniqueRequest._id,
+        isRead: false,
+      });
 
-    // 다른 관리자들에게 갔던 "새 요청" 알림도 함께 읽음 처리 (안 그러면 벨이 계속 켜져 있음)
-    await Notification.updateMany(
-      { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
-      { $set: { isRead: true } }
-    );
+      // 다른 관리자들에게 갔던 "새 요청" 알림도 함께 읽음 처리 (안 그러면 벨이 계속 켜져 있음)
+      await Notification.updateMany(
+        { relatedRequestId: techniqueRequest._id, type: 'new_request', isRead: false },
+        { $set: { isRead: true } }
+      );
+    } catch (notifyError) {
+      console.error('Failed to notify submitter of approval:', notifyError);
+    }
 
     return NextResponse.json({ success: true, data: techniqueRequest });
   } catch (error) {
