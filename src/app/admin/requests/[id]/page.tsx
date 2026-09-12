@@ -122,7 +122,11 @@ export default function AdminRequestDetailPage() {
   }
 
   const target = request.targetTechniqueId;
-  const isStale = !!target && new Date(target.updatedAt as string) > new Date(request.createdAt);
+  const isStale =
+    request.status === 'pending' &&
+    request.type === 'edit' &&
+    !!target &&
+    new Date(target.updatedAt as string) > new Date(request.createdAt);
 
   return (
     <div className="container max-w-2xl py-6 lg:py-10 space-y-6">
