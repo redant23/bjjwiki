@@ -40,10 +40,11 @@ export async function POST(
     }
 
     if (techniqueRequest.type === 'create') {
-      await createTechniqueFromPayload({
+      const created = await createTechniqueFromPayload({
         ...techniqueRequest.payload,
         status: 'published',
       });
+      techniqueRequest.targetTechniqueId = created._id as mongoose.Types.ObjectId;
 
       revalidateTag('technique-tree', 'max');
     } else {
