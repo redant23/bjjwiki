@@ -14,7 +14,7 @@ export interface INotification extends Document {
 
 const NotificationSchema: Schema = new Schema(
   {
-    user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     type: {
       type: String,
       enum: ['request_approved', 'request_rejected', 'new_request'],
@@ -22,12 +22,12 @@ const NotificationSchema: Schema = new Schema(
     },
     message: { type: String, required: true },
     relatedRequestId: { type: Schema.Types.ObjectId, ref: 'TechniqueRequest' },
-    isRead: { type: Boolean, default: false, index: true },
+    isRead: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
-NotificationSchema.index({ user: 1, isRead: 1, createdAt: -1 });
+NotificationSchema.index({ user: 1, createdAt: -1 });
 
 const Notification: Model<INotification> =
   mongoose.models.Notification || mongoose.model<INotification>('Notification', NotificationSchema);
