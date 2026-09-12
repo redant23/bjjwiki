@@ -118,9 +118,10 @@ export async function POST(
     return NextResponse.json({ success: true, data: techniqueRequest });
   } catch (error) {
     console.error('POST /api/technique-requests/[id]/approve error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to approve request';
     return NextResponse.json(
-      { success: false, error: 'Failed to approve request' },
-      { status: 500 }
+      { success: false, error: errorMessage },
+      { status: 400 }
     );
   }
 }
