@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [requests, setRequests] = useState<TechniqueRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -37,9 +38,12 @@ export default function AdminDashboard() {
           const data = await res.json();
           if (data.success) {
             setRequests(data.data);
+          } else {
+            setError(data.error || '요청 목록을 불러오지 못했습니다.');
           }
-        } catch (error) {
-          console.error('Failed to fetch pending requests', error);
+        } catch (err) {
+          console.error('Failed to fetch pending requests', err);
+          setError('요청 목록을 불러오지 못했습니다.');
         } finally {
           setLoading(false);
         }
@@ -75,6 +79,12 @@ export default function AdminDashboard() {
 
       <div className="space-y-6">
         <h2 className="text-xl font-semibold">대기 중인 요청</h2>
+
+        {error && (
+          <div className="p-4 bg-destructive/10 text-destructive rounded-md">
+            {error}
+          </div>
+        )}
 
         {requests.length === 0 ? (
           <p className="text-muted-foreground">검토할 요청이 없습니다.</p>
