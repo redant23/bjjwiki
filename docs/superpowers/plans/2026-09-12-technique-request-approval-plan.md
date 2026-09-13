@@ -120,6 +120,7 @@ EOF
 기존 `getTechniqueTree` 아래에 다음을 추가한다 (`src/lib/technique-service.ts` 전체 내용은 아래와 같이 된다):
 
 ```ts
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
@@ -214,11 +215,14 @@ export async function createTechniqueFromPayload(payload: Record<string, unknown
   // 1. Generate Slug if not provided
   if (!body.slug) {
     const nameForSlug = body.name?.en || body.name?.ko || 'untitled';
-    let generatedSlug = slugify(nameForSlug);
+    // Non-Latin names (e.g. Hangul-only) are stripped to '' by slugify,
+    // which would fail the required `slug` field — fall back to a generated id.
+    const baseSlug = slugify(nameForSlug) || `technique-${new mongoose.Types.ObjectId().toString().slice(-8)}`;
+    let generatedSlug = baseSlug;
 
     let counter = 1;
     while (await Technique.findOne({ slug: generatedSlug })) {
-      generatedSlug = `${slugify(nameForSlug)}-${counter}`;
+      generatedSlug = `${baseSlug}-${counter}`;
       counter++;
     }
     body.slug = generatedSlug;
@@ -419,7 +423,37 @@ mongosh "$MONGODB_URI" --quiet --eval "db.techniques.findOne({'name.ko': '리팩
 
 기대 결과: `status: 'published'`인 문서가 존재.
 
-- [ ] **Step 6: 커밋**
+- [ ] **Step 6: 검증 — 한글 전용 이름(name.en 없음)도 slug가 정상 생성되는지 확인**
+
+`slugify`는 `[^\w\-]+`를 제거하므로 한글은 전부 지워진다. `name.en`이 없고 `name.ko`가 한글뿐이면 예전 코드는 `body.slug = ''`가 되어 Mongoose의 `required: true` 검증에 걸려 500 에러가 났다. 이 리팩터링에서 함께 고친 폴백(빈 슬러그면 `technique-<id 일부>`로 대체)이 살아있는지 확인한다.
+
+**관리자 계정**으로 로그인한 브라우저 콘솔에서:
+
+```js
+const res = await fetch('/api/techniques', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    name: { ko: '테스트요청기술' },
+    description: { ko: '한글 전용 이름 슬러그 테스트' },
+    type: 'both',
+    primaryRole: 'position',
+  }),
+});
+console.log(res.status, await res.json());
+```
+
+기대 결과: `201`과 함께 `data.slug`가 빈 문자열이 아닌 `technique-`로 시작하는 값(예: `technique-a1b2c3d4`)으로 채워져 있음. 같은 이름으로 다시 한 번 호출해 두 번째 문서의 slug가 첫 번째와 겹치지 않고 고유하게 생성되는지도 확인한다.
+
+DB에서도 확인:
+
+```bash
+mongosh "$MONGODB_URI" --quiet --eval "db.techniques.find({'name.ko': '테스트요청기술'}, {slug:1}).toArray()"
+```
+
+기대 결과: 두 문서 모두 비어있지 않은 서로 다른 `slug` 보유.
+
+- [ ] **Step 7: 커밋**
 
 ```bash
 git add src/lib/technique-service.ts src/app/api/techniques/route.ts src/app/api/techniques/[id]/route.ts
