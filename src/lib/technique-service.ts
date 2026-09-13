@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
@@ -92,11 +93,14 @@ export async function createTechniqueFromPayload(payload: Record<string, unknown
   // 1. Generate Slug if not provided
   if (!body.slug) {
     const nameForSlug = body.name?.en || body.name?.ko || 'untitled';
-    let generatedSlug = slugify(nameForSlug);
+    // Non-Latin names (e.g. Hangul-only) are stripped to '' by slugify,
+    // which would fail the required `slug` field — fall back to a generated id.
+    const baseSlug = slugify(nameForSlug) || `technique-${new mongoose.Types.ObjectId().toString().slice(-8)}`;
+    let generatedSlug = baseSlug;
 
     let counter = 1;
     while (await Technique.findOne({ slug: generatedSlug })) {
-      generatedSlug = `${slugify(nameForSlug)}-${counter}`;
+      generatedSlug = `${baseSlug}-${counter}`;
       counter++;
     }
     body.slug = generatedSlug;
