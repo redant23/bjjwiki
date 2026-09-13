@@ -135,6 +135,31 @@ export async function createTechniqueFromPayload(payload: Record<string, unknown
   return technique;
 }
 
+// name/aka/description처럼 { ko, en } 형태로 다국어를 담는 필드 목록.
+// 이 필드들은 findByIdAndUpdate에 그대로 넘기면 Mongoose가 경로 전체를
+// 교체해버려서, payload에 없는 언어 키(en 등)가 삭제된다. 서브키 단위로
+// 점(dot) 표기 $set을 만들어 부분 필드만 병합되도록 한다.
+const NESTED_MULTILANG_FIELDS = ['name', 'aka', 'description'] as const;
+
+function buildTechniqueUpdateSet(body: Record<string, unknown>): Record<string, unknown> {
+  const update: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(body)) {
+    if (
+      (NESTED_MULTILANG_FIELDS as readonly string[]).includes(key) &&
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
+      for (const [subKey, subValue] of Object.entries(value as Record<string, unknown>)) {
+        update[`${key}.${subKey}`] = subValue;
+      }
+    } else {
+      update[key] = value;
+    }
+  }
+  return update;
+}
+
 export async function applyTechniqueEdit(
   id: string,
   payload: Record<string, unknown>
@@ -172,10 +197,16 @@ export async function applyTechniqueEdit(
     body.pathSlugs = [];
   }
 
-  const technique = await Technique.findByIdAndUpdate(id, body, {
-    new: true,
-    runValidators: true,
-  });
+  const update = buildTechniqueUpdateSet(body);
+  if (Object.keys(update).length === 0) {
+    return currentTechnique;
+  }
+
+  const technique = await Technique.findByIdAndUpdate(
+    id,
+    { $set: update },
+    { new: true, runValidators: true }
+  );
 
   return technique;
 }
