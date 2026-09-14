@@ -141,7 +141,10 @@ export async function GET(request: Request) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: any = {};
-    if (status) query.status = status;
+    if (status) {
+      const statuses = status.split(',').map((s) => s.trim()).filter(Boolean);
+      query.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
+    }
 
     if (session!.user.role !== 'admin' || mine === '1') {
       query.submittedBy = session!.user.id;

@@ -15,9 +15,24 @@ interface TechniqueRequestListItem {
   createdAt: string;
 }
 
+type Tab = 'pending' | 'processed';
+
+const STATUS_LABELS: Record<TechniqueRequestListItem['status'], string> = {
+  pending: '대기중',
+  approved: '승인됨',
+  rejected: '반려됨',
+};
+
+const STATUS_STYLES: Record<TechniqueRequestListItem['status'], string> = {
+  pending: 'bg-amber-100 text-amber-800',
+  approved: 'bg-green-100 text-green-800',
+  rejected: 'bg-red-100 text-red-800',
+};
+
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [tab, setTab] = useState<Tab>('pending');
   const [requests, setRequests] = useState<TechniqueRequestListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,11 +46,13 @@ export default function AdminDashboard() {
   }, [status, session, router]);
 
   useEffect(() => {
-    async function fetchPending() {
+    async function fetchRequests() {
       if (status === 'authenticated' && session?.user?.role === 'admin') {
         try {
+          setLoading(true);
           setError('');
-          const res = await fetch('/api/technique-requests?status=pending');
+          const statusParam = tab === 'pending' ? 'pending' : 'approved,rejected';
+          const res = await fetch(`/api/technique-requests?status=${statusParam}`);
           const data = await res.json();
           if (data.success) {
             setRequests(data.data);
@@ -43,15 +60,15 @@ export default function AdminDashboard() {
             setError(data.error || '요청 목록을 불러오지 못했습니다.');
           }
         } catch (err) {
-          console.error('Failed to fetch pending requests', err);
+          console.error('Failed to fetch requests', err);
           setError('요청 목록을 불러오지 못했습니다.');
         } finally {
           setLoading(false);
         }
       }
     }
-    fetchPending();
-  }, [status, session]);
+    fetchRequests();
+  }, [status, session, tab]);
 
   if (status === 'loading' || loading) {
     return <div className="p-8">Loading...</div>;
@@ -79,7 +96,28 @@ export default function AdminDashboard() {
       </div>
 
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold">대기 중인 요청</h2>
+        <div className="flex gap-2 border-b">
+          <button
+            onClick={() => setTab('pending')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === 'pending'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            대기중인 요청
+          </button>
+          <button
+            onClick={() => setTab('processed')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              tab === 'processed'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            처리된 요청
+          </button>
+        </div>
 
         {error && (
           <div className="p-4 bg-destructive/10 text-destructive rounded-md">
@@ -88,7 +126,9 @@ export default function AdminDashboard() {
         )}
 
         {!error && requests.length === 0 ? (
-          <p className="text-muted-foreground">검토할 요청이 없습니다.</p>
+          <p className="text-muted-foreground">
+            {tab === 'pending' ? '검토할 요청이 없습니다.' : '처리된 요청이 없습니다.'}
+          </p>
         ) : (
           <div className="rounded-md border">
             <div className="relative w-full overflow-auto">
@@ -99,6 +139,9 @@ export default function AdminDashboard() {
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">기술명</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">제출자</th>
                     <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">제출일</th>
+                    {tab === 'processed' && (
+                      <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">상태</th>
+                    )}
                     <th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">액션</th>
                   </tr>
                 </thead>
@@ -113,12 +156,19 @@ export default function AdminDashboard() {
                       </td>
                       <td className="p-4 align-middle">{req.submittedBy.nickname}</td>
                       <td className="p-4 align-middle">{new Date(req.createdAt).toLocaleDateString()}</td>
+                      {tab === 'processed' && (
+                        <td className="p-4 align-middle">
+                          <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${STATUS_STYLES[req.status]}`}>
+                            {STATUS_LABELS[req.status]}
+                          </span>
+                        </td>
+                      )}
                       <td className="p-4 align-middle text-right">
                         <Link
                           href={`/admin/requests/${req._id}`}
                           className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 h-9 px-3"
                         >
-                          검토하기
+                          {tab === 'pending' ? '검토하기' : '상세보기'}
                         </Link>
                       </td>
                     </tr>

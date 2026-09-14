@@ -39,13 +39,12 @@ export function NotificationBell() {
   }, [fetchNotifications]);
 
   const handleNotificationClick = async (notification: NotificationItem) => {
-    if (!notification.isRead) {
-      try {
-        await fetch(`/api/notifications/${notification._id}/read`, { method: 'POST' });
-        fetchNotifications();
-      } catch {
-        // Non-fatal: the notification just won't show as read yet. Still navigate below.
-      }
+    setNotifications((prev) => prev.filter((n) => n._id !== notification._id));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try {
+      await fetch(`/api/notifications/${notification._id}/read`, { method: 'POST' });
+    } catch {
+      // Non-fatal: a later poll will reconcile the list if this failed.
     }
     setIsOpen(false);
     if (notification.type === 'new_request') {
@@ -78,9 +77,7 @@ export function NotificationBell() {
                 <li key={n._id}>
                   <button
                     onClick={() => handleNotificationClick(n)}
-                    className={`w-full text-left px-4 py-3 text-sm border-b last:border-0 hover:bg-accent ${
-                      n.isRead ? 'text-muted-foreground' : 'font-medium'
-                    }`}
+                    className="w-full text-left px-4 py-3 text-sm font-medium border-b last:border-0 hover:bg-accent"
                   >
                     {n.message}
                     <div className="text-xs text-muted-foreground mt-1">

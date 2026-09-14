@@ -10,7 +10,10 @@ export async function GET() {
 
     await dbConnect();
 
-    const notifications = await Notification.find({ user: session!.user.id })
+    const notifications = await Notification.find({
+      user: session!.user.id,
+      isRead: false,
+    })
       .sort({ createdAt: -1 })
       .limit(30);
 

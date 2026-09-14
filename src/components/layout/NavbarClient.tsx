@@ -26,7 +26,8 @@ interface NavbarClientProps {
 
 export function NavbarClient({ initialTree }: NavbarClientProps) {
   const { theme, setTheme } = useTheme();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
   const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -137,6 +138,14 @@ export function NavbarClient({ initialTree }: NavbarClientProps) {
               </Link>
             )}
             {status === 'authenticated' && <NotificationBell />}
+            {status === 'authenticated' && isAdmin && (
+              <Link
+                href="/admin"
+                className="inline-flex items-center justify-center rounded-md text-xs font-semibold bg-primary text-primary-foreground h-6 px-2 hover:bg-primary/90"
+              >
+                관리자
+              </Link>
+            )}
             {status === 'authenticated' && (
               <>
                 <Link

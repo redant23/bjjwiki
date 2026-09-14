@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { FIELD_LABELS, stringifyValue } from '@/lib/technique-request-format';
 
 interface TechniqueRequestDetail {
   _id: string;
@@ -14,28 +15,6 @@ interface TechniqueRequestDetail {
   targetTechniqueId?: (Record<string, unknown> & { _id: string; updatedAt: string }) | null;
   submittedBy: { nickname: string; email: string };
   createdAt: string;
-}
-
-const FIELD_LABELS: Record<string, string> = {
-  name: '기술명',
-  aka: '별칭',
-  description: '설명',
-  type: '유형',
-  primaryRole: '주 역할',
-  roleTags: 'Role Tags',
-  difficulty: '난이도',
-  isCorePosition: '핵심 포지션 여부',
-  positionType: '포지션 타입',
-  parentId: '상위 기술',
-  videos: '영상',
-  images: '이미지',
-  thumbnailUrl: '썸네일',
-};
-
-function stringifyValue(value: unknown): string {
-  if (value === undefined || value === null) return '(없음)';
-  if (typeof value === 'string') return value;
-  return JSON.stringify(value, null, 2);
 }
 
 export default function AdminRequestDetailPage() {
