@@ -90,7 +90,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { error: authError } = await requireAdmin();
+    const { session, error: authError } = await requireAdmin();
     if (authError) return authError;
 
     const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     const technique = await createTechniqueFromPayload({
       ...body,
       status: body.status || 'draft',
-    });
+    }, session!.user.id);
 
     revalidateTag('technique-tree', 'max');
 

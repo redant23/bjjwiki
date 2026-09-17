@@ -43,7 +43,7 @@ export async function POST(
       const created = await createTechniqueFromPayload({
         ...techniqueRequest.payload,
         status: 'published',
-      });
+      }, techniqueRequest.submittedBy.toString());
       techniqueRequest.targetTechniqueId = created._id as mongoose.Types.ObjectId;
 
       revalidateTag('technique-tree', 'max');
@@ -56,7 +56,11 @@ export async function POST(
         );
       }
 
-      const updated = await applyTechniqueEdit(targetId, techniqueRequest.payload);
+      const updated = await applyTechniqueEdit(
+        targetId,
+        techniqueRequest.payload,
+        techniqueRequest.submittedBy.toString()
+      );
       if (!updated) {
         // 대상 기술이 그 사이 삭제된 경우: 승인 대신 자동 반려 처리
         techniqueRequest.status = 'rejected';

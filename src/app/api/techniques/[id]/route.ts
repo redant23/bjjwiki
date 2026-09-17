@@ -42,11 +42,11 @@ export async function PUT(
 ) {
   const params = await props.params;
   try {
-    const { error: authError } = await requireAdmin();
+    const { session, error: authError } = await requireAdmin();
     if (authError) return authError;
 
     const body = await request.json();
-    const technique = await applyTechniqueEdit(params.id, body);
+    const technique = await applyTechniqueEdit(params.id, body, session!.user.id);
 
     if (!technique) {
       return NextResponse.json(
