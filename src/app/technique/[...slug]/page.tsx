@@ -35,6 +35,8 @@ interface Technique {
   thumbnailUrl?: string;
   roleTags?: string[];
   updatedAt: string;
+  createdBy?: { nickname: string } | null;
+  lastEditedBy?: { nickname: string } | null;
 }
 
 export default function TechniquePage() {
@@ -730,6 +732,8 @@ export default function TechniquePage() {
 
         <footer className="pt-6 text-sm text-muted-foreground border-t border-border">
           최종 수정: {new Date(technique.updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+          {technique.createdBy && ` · 게시자: ${technique.createdBy.nickname}`}
+          {technique.lastEditedBy && ` · 수정자: ${technique.lastEditedBy.nickname}`}
         </footer>
       </article>
 
