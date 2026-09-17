@@ -18,7 +18,9 @@ export async function GET(
       .populate('childrenIds', 'name slug type primaryRole')
       .populate('sweepsFromHere', 'name slug')
       .populate('submissionsFromHere', 'name slug')
-      .populate('escapesFromHere', 'name slug');
+      .populate('escapesFromHere', 'name slug')
+      .populate('createdBy', 'nickname')
+      .populate('lastEditedBy', 'nickname');
 
     if (!technique) {
       return NextResponse.json(
