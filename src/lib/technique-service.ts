@@ -85,7 +85,10 @@ function slugify(text: string): string {
     .replace(/\-\-+/g, '-');  // Replace multiple - with single -
 }
 
-export async function createTechniqueFromPayload(payload: Record<string, unknown>): Promise<ITechnique> {
+export async function createTechniqueFromPayload(
+  payload: Record<string, unknown>,
+  actorId?: string
+): Promise<ITechnique> {
   await dbConnect();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const body: any = { ...payload };
@@ -123,6 +126,8 @@ export async function createTechniqueFromPayload(payload: Record<string, unknown
   const technique = (await Technique.create({
     ...body,
     status: body.status || 'draft',
+    contentUpdatedAt: new Date(),
+    ...(actorId && { createdBy: actorId }),
   })) as unknown as ITechnique;
 
   // 4. Update Parent's childrenIds
@@ -160,9 +165,30 @@ function buildTechniqueUpdateSet(body: Record<string, unknown>): Record<string, 
   return update;
 }
 
+// currentTechnique.get(key)를 JSON.stringify로 그대로 비교하면 Mongoose가 서브도큐먼트
+// 배열(videos/images)에 자동으로 붙이는 _id 때문에 실제로는 안 바뀐 값도 "달라짐"으로
+// 오판한다. 양쪽을 JSON 왕복(ObjectId 등 toJSON() 적용)시킨 뒤 _id를 재귀적으로 제거하고
+// 비교한다.
+function normalizeForDiff(value: unknown): unknown {
+  const plain = JSON.parse(JSON.stringify(value ?? null));
+  return stripIds(plain);
+}
+
+function stripIds(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stripIds);
+  }
+  if (value && typeof value === 'object') {
+    const { _id, ...rest } = value as Record<string, unknown>;
+    return Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, stripIds(v)]));
+  }
+  return value;
+}
+
 export async function applyTechniqueEdit(
   id: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  actorId?: string
 ): Promise<ITechnique | null> {
   await dbConnect();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,10 +223,27 @@ export async function applyTechniqueEdit(
     body.pathSlugs = [];
   }
 
-  const update = buildTechniqueUpdateSet(body);
+  const rawUpdate = buildTechniqueUpdateSet(body);
+
+  // 페이로드에 필드가 있어도 실제 값이 그대로면 "수정"으로 치지 않는다 —
+  // 그래야 변경 없이 저장 버튼만 누른 요청이 lastEditedBy/contentUpdatedAt을
+  // 잘못 갱신하지 않는다.
+  const update: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(rawUpdate)) {
+    const currentValue = currentTechnique.get(key);
+    if (JSON.stringify(normalizeForDiff(currentValue)) !== JSON.stringify(normalizeForDiff(value))) {
+      update[key] = value;
+    }
+  }
+
   if (Object.keys(update).length === 0) {
     return currentTechnique;
   }
+
+  if (actorId) {
+    update.lastEditedBy = actorId;
+  }
+  update.contentUpdatedAt = new Date();
 
   const technique = await Technique.findByIdAndUpdate(
     id,
