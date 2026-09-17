@@ -174,3 +174,13 @@
     transform: translateX(-50%);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
