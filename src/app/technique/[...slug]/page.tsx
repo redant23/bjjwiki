@@ -13,6 +13,7 @@ import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { TagInput } from '@/components/ui/TagInput';
 import { SkillStatusControls } from '@/components/technique/SkillStatusControls';
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
+import { getYoutubeEmbedUrl } from '@/lib/youtube';
 
 interface Technique {
   _id: string;
@@ -667,7 +668,7 @@ export default function TechniquePage() {
                   <iframe
                     width="100%"
                     height="100%"
-                    src={video.url.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                    src={getYoutubeEmbedUrl(video.url)}
                     title={`${technique.name.ko} - Video ${index + 1}`}
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"

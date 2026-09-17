@@ -6,6 +6,7 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { Edit, Save, X, Trash2, Bookmark, Upload } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import { getYoutubeEmbedUrl } from '@/lib/youtube';
 
 interface ComboTechnique {
   _id: string;
@@ -298,7 +299,7 @@ export default function ComboDetailPage() {
                 <iframe
                   width="100%"
                   height="100%"
-                  src={combo.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                  src={getYoutubeEmbedUrl(combo.videoUrl)}
                   title={combo.name}
                   frameBorder="0"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
