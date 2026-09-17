@@ -693,25 +693,32 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
         <span className="shrink-0 text-sm font-semibold text-accent">공지</span>
         <div className="relative flex-1 overflow-hidden">
           <div
-            className="animate-marquee flex w-max items-center gap-8 whitespace-nowrap"
+            className="animate-marquee flex w-max whitespace-nowrap"
             style={{ animationDuration: `${durationSeconds}s` }}
           >
-            {items.map((item) => (
-              <Link key={item._id} href={item.href} className="text-sm hover:underline">
-                {item.name} 기술이 새로 업데이트되었습니다.
-              </Link>
-            ))}
-            {items.map((item) => (
-              <Link
-                key={`clone-${item._id}`}
-                href={item.href}
-                className="text-sm hover:underline"
-                aria-hidden="true"
-                tabIndex={-1}
-              >
-                {item.name} 기술이 새로 업데이트되었습니다.
-              </Link>
-            ))}
+            {/* 두 벌을 감싸는 바깥 트랙에는 gap을 주지 않는다 — 두 벌의 폭이
+                정확히 같아야 translateX(-50%)가 이음매 없이 딱 맞아떨어진다.
+                항목 사이 간격(gap-8)과 이음매 간격(pr-8)은 각 벌 안에서
+                동일하게 줘서 반복 지점에서 간격이 튀지 않게 한다. */}
+            <div className="flex items-center gap-8 pr-8">
+              {items.map((item) => (
+                <Link key={item._id} href={item.href} className="text-sm hover:underline">
+                  {item.name} 기술이 새로 업데이트되었습니다.
+                </Link>
+              ))}
+            </div>
+            <div className="flex items-center gap-8 pr-8" aria-hidden="true">
+              {items.map((item) => (
+                <Link
+                  key={`clone-${item._id}`}
+                  href={item.href}
+                  className="text-sm hover:underline"
+                  tabIndex={-1}
+                >
+                  {item.name} 기술이 새로 업데이트되었습니다.
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -719,6 +726,12 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
   );
 }
 ```
+
+**중요 (marquee 리뷰에서 발견된 함정):** 바깥 트랙(`animate-marquee`가 붙는 div)과 두 벌
+사이에는 절대 `gap`을 주면 안 된다. 두 벌을 감싸는 각각의 `<div>`가 정확히 같은 폭이어야만
+`translateX(-50%)`가 정확히 한 벌 분량만큼 이동해서 이음매가 안 보인다 — 간격을 바깥
+트랙에 주면 두 벌 사이에만 여분의 간격이 끼어들어 폭이 안 맞고, 매 반복마다 살짝 튀는
+게 눈에 보이게 된다.
 
 - [ ] **Step 2: 타입체크**
 
