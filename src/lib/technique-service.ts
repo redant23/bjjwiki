@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
+import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 
 export const getTechniqueTree = unstable_cache(
   async () => {
@@ -9,7 +10,7 @@ export const getTechniqueTree = unstable_cache(
 
     // Fetch only necessary fields for the sidebar
     const techniques = await Technique.find({ status: 'published' })
-      .select('_id name slug parentId pathSlugs order level')
+      .select('_id name slug parentId pathSlugs order level contentUpdatedAt')
       .sort({ order: 1, 'name.ko': 1 })
       .lean();
 
@@ -18,6 +19,7 @@ export const getTechniqueTree = unstable_cache(
       ...tech,
       _id: tech._id.toString(),
       parentId: tech.parentId ? tech.parentId.toString() : null,
+      contentUpdatedAt: tech.contentUpdatedAt ? tech.contentUpdatedAt.toISOString() : null,
       children: [] as any[], // Initialize children array
     }));
 
@@ -252,4 +254,32 @@ export async function applyTechniqueEdit(
   );
 
   return technique;
+}
+
+export interface RecentlyUpdatedTechnique {
+  _id: string;
+  name: string;
+  href: string;
+}
+
+export async function getRecentlyUpdatedTechniques(
+  limit = 10
+): Promise<RecentlyUpdatedTechnique[]> {
+  await dbConnect();
+  const since = new Date(Date.now() - RECENT_UPDATE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+  const techniques = await Technique.find({
+    status: 'published',
+    contentUpdatedAt: { $gte: since },
+  })
+    .select('_id name slug pathSlugs contentUpdatedAt')
+    .sort({ contentUpdatedAt: -1 })
+    .limit(limit)
+    .lean();
+
+  return techniques.map((tech) => ({
+    _id: tech._id.toString(),
+    name: tech.name.ko,
+    href: `/technique/${[...(tech.pathSlugs || []), tech.slug].join('/')}`,
+  }));
 }
