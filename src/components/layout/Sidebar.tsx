@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown, Settings, Check } from 'lucide-react';
+import { isWithinRecentWindow } from '@/lib/recent-update';
 
 interface Technique {
   _id: string;
@@ -14,6 +15,16 @@ interface Technique {
   pathSlugs: string[];
   children?: Technique[];
   order?: number;
+  contentUpdatedAt?: string | null;
+}
+
+// 형제 목록 내에서 "최근 3일 이내 수정된" 항목만 원래 순서를 유지한 채 맨 앞으로
+// 옮긴다. 나머지(비-최근) 항목들의 상대 순서는 그대로 유지되므로 관리자가
+// "순서 편집"으로 설정한 커스텀 순서를 해치지 않는다.
+function sortByRecency(nodes: Technique[]): Technique[] {
+  const recent = nodes.filter((n) => isWithinRecentWindow(n.contentUpdatedAt));
+  const rest = nodes.filter((n) => !isWithinRecentWindow(n.contentUpdatedAt));
+  return [...recent, ...rest];
 }
 
 interface SidebarProps {
@@ -201,6 +212,10 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
             <span className="w-5" />
           )}
 
+          {isWithinRecentWindow(node.contentUpdatedAt) && (
+            <span className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-yellow-400" />
+          )}
+
           <Link
             href={href}
             onClick={() => {
@@ -243,7 +258,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
 
         {hasChildren && isExpanded && (
           <div className="border-l border-border/30 ml-4 pl-1">
-            {node.children!.map(child => renderNode(child, depth + 1))}
+            {(isEditingOrder ? node.children! : sortByRecency(node.children!)).map(child => renderNode(child, depth + 1))}
           </div>
         )}
       </div>
@@ -318,7 +333,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
         </div>
 
         <nav className="w-full space-y-1 pb-40">
-          {tree.map(node => renderNode(node))}
+          {(isEditingOrder ? tree : sortByRecency(tree)).map(node => renderNode(node))}
 
           {tree.length === 0 && (
             <div className="text-sm text-muted-foreground text-center py-4">
