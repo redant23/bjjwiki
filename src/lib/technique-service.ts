@@ -172,7 +172,10 @@ function buildTechniqueUpdateSet(body: Record<string, unknown>): Record<string, 
 // 오판한다. 양쪽을 JSON 왕복(ObjectId 등 toJSON() 적용)시킨 뒤 _id를 재귀적으로 제거하고
 // 비교한다.
 function normalizeForDiff(value: unknown): unknown {
-  const plain = JSON.parse(JSON.stringify(value ?? null));
+  if (value === '' || value === undefined || value === null) {
+    return null;
+  }
+  const plain = JSON.parse(JSON.stringify(value));
   return stripIds(plain);
 }
 
@@ -181,8 +184,11 @@ function stripIds(value: unknown): unknown {
     return value.map(stripIds);
   }
   if (value && typeof value === 'object') {
-    const { _id, ...rest } = value as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, stripIds(v)]));
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([key]) => key !== '_id')
+        .map(([key, v]) => [key, stripIds(v)])
+    );
   }
   return value;
 }
