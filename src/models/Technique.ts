@@ -71,6 +71,7 @@ export interface ITechnique extends Document {
   status: 'draft' | 'published' | 'archived';
   createdBy?: mongoose.Types.ObjectId;
   lastEditedBy?: mongoose.Types.ObjectId;
+  contentUpdatedAt?: Date; // 콘텐츠가 실제로 편집된 시각. reorder/부모-자식 정리는 이 필드를 건드리지 않는다.
   viewCount: number;
   likeCount: number;
 
@@ -170,6 +171,7 @@ const TechniqueSchema: Schema = new Schema(
     },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' }, // Assuming User model exists or will exist
     lastEditedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    contentUpdatedAt: { type: Date, index: true },
     viewCount: { type: Number, default: 0, index: true },
     likeCount: { type: Number, default: 0, index: true },
   },
@@ -190,6 +192,7 @@ TechniqueSchema.index({
 TechniqueSchema.index({ primaryRole: 1, type: 1, difficulty: 1 });
 TechniqueSchema.index({ level: 1, order: 1 });
 TechniqueSchema.index({ positionType: 1, isCorePosition: 1 });
+TechniqueSchema.index({ status: 1, contentUpdatedAt: -1 });
 
 // Prevent recompilation of model in development
 const Technique: Model<ITechnique> =
