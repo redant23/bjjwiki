@@ -27,6 +27,14 @@ function sortByRecency(nodes: Technique[]): Technique[] {
   return [...recent, ...rest];
 }
 
+// 트리 전체(하위 카테고리 포함)를 재귀적으로 순회해 등록된 기술 총 개수를 센다.
+function countTechniques(nodes: Technique[]): number {
+  return nodes.reduce(
+    (total, node) => total + 1 + (node.children ? countTechniques(node.children) : 0),
+    0
+  );
+}
+
 interface SidebarProps {
   mobile?: boolean;
   onLinkClick?: () => void;
@@ -312,6 +320,9 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
           </div>
         </div>
         */}
+        <div className="mb-3 px-1 text-xs font-medium text-muted-foreground">
+          총 {countTechniques(tree)}개 기술
+        </div>
         {/* Order Edit Button */}
         <div className="pb-4 bg-background">
           <button
