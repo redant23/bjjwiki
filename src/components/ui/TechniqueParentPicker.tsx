@@ -18,10 +18,12 @@ interface TreeNode extends LightTechnique {
 interface TechniqueParentPickerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (technique: { _id: string; name: { ko: string; en?: string } } | null) => void;
+  onSelect: (technique: { _id: string; name: { ko: string; en?: string }; slug: string; pathSlugs: string[] } | null) => void;
   selectedId?: string | null;
   excludeId?: string;
   excludeSlug?: string;
+  hideNoneOption?: boolean;
+  searchPlaceholder?: string;
 }
 
 function buildTree(flat: LightTechnique[]): TreeNode[] {
@@ -47,6 +49,8 @@ export function TechniqueParentPicker({
   selectedId,
   excludeId,
   excludeSlug,
+  hideNoneOption,
+  searchPlaceholder,
 }: TechniqueParentPickerProps) {
   const [all, setAll] = useState<LightTechnique[] | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -140,7 +144,7 @@ export function TechniqueParentPicker({
   }
 
   function handleSelect(t: LightTechnique) {
-    onSelect({ _id: t._id, name: t.name });
+    onSelect({ _id: t._id, name: t.name, slug: t.slug, pathSlugs: t.pathSlugs });
     onClose();
   }
 
@@ -212,7 +216,7 @@ export function TechniqueParentPicker({
           <input
             type="text"
             autoFocus
-            placeholder="기술 검색..."
+            placeholder={searchPlaceholder || '기술 검색...'}
             className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -231,16 +235,18 @@ export function TechniqueParentPicker({
         </div>
 
         <div className="overflow-y-auto p-2">
-          <button
-            type="button"
-            onClick={handleSelectNone}
-            className={`w-full flex items-center justify-between px-2 py-2 rounded-md text-sm mb-1 ${
-              !selectedId ? 'bg-accent/10 font-semibold text-accent' : 'hover:bg-muted/50'
-            }`}
-          >
-            없음 (최상위)
-            {!selectedId && <Check className="h-4 w-4 text-accent" />}
-          </button>
+          {!hideNoneOption && (
+            <button
+              type="button"
+              onClick={handleSelectNone}
+              className={`w-full flex items-center justify-between px-2 py-2 rounded-md text-sm mb-1 ${
+                !selectedId ? 'bg-accent/10 font-semibold text-accent' : 'hover:bg-muted/50'
+              }`}
+            >
+              없음 (최상위)
+              {!selectedId && <Check className="h-4 w-4 text-accent" />}
+            </button>
+          )}
 
           {loadError && (
             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">

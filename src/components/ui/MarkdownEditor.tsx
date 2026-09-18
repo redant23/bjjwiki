@@ -16,13 +16,17 @@ import {
   Quote,
   Code,
   Minus,
+  Tag,
 } from 'lucide-react';
+import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   label?: string;
+  // Excludes this technique from the tag picker's results (used when editing an existing technique).
+  excludeTechniqueId?: string;
 }
 
 // Selected text is wrapped with before/after; with no selection, placeholder is inserted and selected.
@@ -92,8 +96,24 @@ function applyBlockFormat(value: string, start: number, end: number, format: Blo
   return { newValue, selectionStart: cursor, selectionEnd: cursor };
 }
 
-export function MarkdownEditor({ value, onChange, placeholder, label }: MarkdownEditorProps) {
+function insertTechniqueLink(
+  value: string,
+  start: number,
+  end: number,
+  technique: { name: { ko: string; en?: string }; slug: string; pathSlugs: string[] }
+) {
+  const label = value.slice(start, end) || technique.name.ko;
+  const path = `/technique/${[...technique.pathSlugs, technique.slug].join('/')}`;
+  const linkText = `[${label}](${path})`;
+  const newValue = value.slice(0, start) + linkText + value.slice(end);
+  const cursor = start + linkText.length;
+  return { newValue, selectionStart: cursor, selectionEnd: cursor };
+}
+
+export function MarkdownEditor({ value, onChange, placeholder, label, excludeTechniqueId }: MarkdownEditorProps) {
   const [activeTab, setActiveTab] = useState<'write' | 'preview'>('write');
+  const [tagPickerOpen, setTagPickerOpen] = useState(false);
+  const savedSelectionRef = useRef({ start: 0, end: 0 });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleToolbarClick = (action: ToolbarAction) => {
@@ -115,6 +135,27 @@ export function MarkdownEditor({ value, onChange, placeholder, label }: Markdown
         break;
     }
 
+    onChange(result.newValue);
+
+    requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+    });
+  };
+
+  const handleOpenTagPicker = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    savedSelectionRef.current = { start: textarea.selectionStart, end: textarea.selectionEnd };
+    setTagPickerOpen(true);
+  };
+
+  const handleTagSelect = (technique: { _id: string; name: { ko: string; en?: string }; slug: string; pathSlugs: string[] } | null) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !technique) return;
+
+    const { start, end } = savedSelectionRef.current;
+    const result = insertTechniqueLink(value, start, end, technique);
     onChange(result.newValue);
 
     requestAnimationFrame(() => {
@@ -165,6 +206,16 @@ export function MarkdownEditor({ value, onChange, placeholder, label }: Markdown
                   <action.icon className="h-4 w-4" />
                 </button>
               ))}
+              <span className="mx-1 h-4 w-px bg-input" />
+              <button
+                type="button"
+                title="기술 태그"
+                aria-label="기술 태그"
+                onClick={handleOpenTagPicker}
+                className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                <Tag className="h-4 w-4" />
+              </button>
             </div>
             <textarea
               ref={textareaRef}
@@ -175,15 +226,29 @@ export function MarkdownEditor({ value, onChange, placeholder, label }: Markdown
             />
           </>
         ) : (
-          <div className="w-full p-4 min-h-[300px] prose prose-zinc dark:prose-invert max-w-none overflow-y-auto">
+          <div className="w-full p-4 min-h-[300px] prose prose-zinc dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline overflow-y-auto">
             {value ? (
-              <ReactMarkdown remarkPlugins={[remarkBreaks]}>{value}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkBreaks]}
+                components={{ a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}
+              >
+                {value}
+              </ReactMarkdown>
             ) : (
               <p className="text-muted-foreground italic">미리보기 내용이 없습니다.</p>
             )}
           </div>
         )}
       </div>
+
+      <TechniqueParentPicker
+        isOpen={tagPickerOpen}
+        onClose={() => setTagPickerOpen(false)}
+        onSelect={handleTagSelect}
+        excludeId={excludeTechniqueId}
+        hideNoneOption
+        searchPlaceholder="태그할 기술 검색..."
+      />
     </div>
   );
 }

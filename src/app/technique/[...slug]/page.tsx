@@ -692,6 +692,7 @@ export default function TechniquePage() {
                 value={editForm.description.ko}
                 onChange={(val) => setEditForm({ ...editForm, description: { ...editForm.description, ko: val } })}
                 placeholder="기술에 대한 상세한 설명을 입력하세요..."
+                excludeTechniqueId={technique._id}
               />
               <div>
                 <label className="block text-sm font-medium mb-2">설명 (영어)</label>
@@ -705,7 +706,19 @@ export default function TechniquePage() {
               </div>
             </div>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{technique.description.ko}</ReactMarkdown>
+            <ReactMarkdown
+              remarkPlugins={[remarkBreaks]}
+              components={{
+                a: ({ href, children, ...rest }) =>
+                  href && !href.startsWith('http') ? (
+                    <Link href={href} {...rest}>{children}</Link>
+                  ) : (
+                    <a href={href} target="_blank" rel="noopener noreferrer" {...rest}>{children}</a>
+                  ),
+              }}
+            >
+              {technique.description.ko}
+            </ReactMarkdown>
           )}
         </section>
 
