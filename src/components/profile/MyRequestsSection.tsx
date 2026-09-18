@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { FIELD_LABELS, getChangedFields, summarizeValue } from '@/lib/technique-request-format';
+import { getChangedFields, getEnteredFields } from '@/lib/technique-request-format';
+import { RequestDiffView } from '@/components/technique-requests/RequestDiffView';
 
 interface MyRequestItem {
   _id: string;
@@ -91,7 +92,7 @@ export function MyRequestsSection() {
   const changedFields = detail
     ? detail.type === 'edit'
       ? getChangedFields(detail.payload, detail.targetTechniqueId)
-      : Object.entries(detail.payload).map(([key, after]) => ({ key, before: undefined, after }))
+      : getEnteredFields(detail.payload)
     : [];
 
   if (error && !requests) {
@@ -176,26 +177,7 @@ export function MyRequestsSection() {
             {detailError && <p className="text-sm text-destructive">{detailError}</p>}
 
             {detail && !detailLoading && (
-              <div className="space-y-3">
-                {changedFields.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">변경된 내용이 없습니다.</p>
-                ) : (
-                  changedFields.map(({ key, before, after }) => (
-                    <div key={key} className="text-sm border-b last:border-0 pb-2 last:pb-0">
-                      <div className="font-medium mb-1">{FIELD_LABELS[key] || key}</div>
-                      {detail.type === 'edit' ? (
-                        <div className="text-muted-foreground">
-                          {summarizeValue(key, before)}
-                          <span className="mx-1">→</span>
-                          <span className="text-foreground">{summarizeValue(key, after)}</span>
-                        </div>
-                      ) : (
-                        <div className="text-foreground">{summarizeValue(key, after)}</div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
+              <RequestDiffView type={detail.type} fields={changedFields} layout="stacked" />
             )}
           </div>
         </div>

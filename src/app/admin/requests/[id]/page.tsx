@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
-import { FIELD_LABELS, stringifyValue } from '@/lib/technique-request-format';
+import { getChangedFields, getEnteredFields } from '@/lib/technique-request-format';
+import { RequestDiffView } from '@/components/technique-requests/RequestDiffView';
 
 interface TechniqueRequestDetail {
   _id: string;
@@ -131,27 +132,14 @@ export default function AdminRequestDetailPage() {
         </div>
       )}
 
-      <div className="space-y-4">
-        {Object.entries(request.payload).map(([key, value]) => (
-          <div key={key} className="border rounded-md p-4 space-y-2">
-            <div className="font-semibold text-sm">{FIELD_LABELS[key] || key}</div>
-            {request.type === 'edit' && (
-              <div className="text-sm">
-                <div className="text-muted-foreground">변경 전</div>
-                <pre className="whitespace-pre-wrap bg-muted/30 rounded p-2">
-                  {stringifyValue(target ? target[key] : undefined)}
-                </pre>
-              </div>
-            )}
-            <div className="text-sm">
-              <div className="text-muted-foreground">{request.type === 'edit' ? '변경 후' : '내용'}</div>
-              <pre className="whitespace-pre-wrap bg-muted/30 rounded p-2">
-                {stringifyValue(value)}
-              </pre>
-            </div>
-          </div>
-        ))}
-      </div>
+      <RequestDiffView
+        type={request.type}
+        fields={
+          request.type === 'edit'
+            ? getChangedFields(request.payload, target)
+            : getEnteredFields(request.payload)
+        }
+      />
 
       {request.status === 'pending' ? (
         <div className="flex gap-2">
