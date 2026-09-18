@@ -77,9 +77,8 @@ export function SkillStatusControls({ techniqueId }: SkillStatusControlsProps) {
     }
   }
 
-  function handleStatusClick(value: SkillStatus) {
-    const nextStatus = skillStatus === value ? null : value;
-    updateSkill({ status: nextStatus });
+  function handleStatusChange(value: string) {
+    updateSkill({ status: value ? (value as SkillStatus) : null });
   }
 
   function handleFavoriteClick() {
@@ -91,37 +90,40 @@ export function SkillStatusControls({ techniqueId }: SkillStatusControlsProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {STATUS_OPTIONS.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          disabled={saving}
-          onClick={() => handleStatusClick(option.value)}
-          className={`inline-flex items-center rounded-full px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-            skillStatus === option.value
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-          }`}
-        >
-          {option.label}
-        </button>
-      ))}
+    <>
       <button
         type="button"
         disabled={saving}
         onClick={handleFavoriteClick}
         aria-label="좋아하는 기술로 표시"
-        className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50 ${
-          isFavorite
-            ? 'bg-destructive/10 text-destructive'
-            : 'bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+        aria-pressed={isFavorite}
+        className={`flex items-center justify-center px-3 py-1.5 transition-colors disabled:opacity-50 ${
+          isFavorite ? 'text-destructive' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
         }`}
       >
         <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
-        좋아함
       </button>
-      {error && <p className="w-full text-sm text-destructive">{error}</p>}
-    </div>
+
+      <select
+        value={skillStatus ?? ''}
+        disabled={saving}
+        onChange={(e) => handleStatusChange(e.target.value)}
+        aria-label="관심도 선택"
+        className="h-full cursor-pointer bg-transparent px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none disabled:opacity-50"
+      >
+        <option value="">관심도 선택</option>
+        {STATUS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      {error && (
+        <p className="absolute right-0 top-full mt-1 whitespace-nowrap text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </>
   );
 }
