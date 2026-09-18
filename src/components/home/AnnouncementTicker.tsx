@@ -17,10 +17,17 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
     return null;
   }
 
+  // sticky top-14: 헤더(h-14, 3.5rem)에 딱 붙어 스크롤 시에도 그 아래 고정된다.
+  // -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-10: 부모(main) 컨테이너의 좌우 padding과
+  // 상단 padding을 상쇄해, 네비바 바로 밑에 여백 없이 붙고 모바일에서는
+  // 컨텐츠 최상단에서 화면 폭 전체를 채운다.
+  const stickyBleedClasses =
+    'sticky top-14 z-40 -mx-4 -mt-6 sm:-mx-6 lg:-mx-8 lg:-mt-10';
+
   if (items.length === 1) {
     const item = items[0];
     return (
-      <div className="w-full border-b border-border bg-accent/10 py-2">
+      <div className={`${stickyBleedClasses} border-b border-border bg-accent/10 py-2`}>
         <div className="mx-auto flex max-w-4xl items-center gap-2 px-4 text-sm sm:px-6 lg:px-8">
           <span className="shrink-0 font-semibold text-accent">공지</span>
           <Link href={item.href} className="truncate hover:underline">
@@ -35,7 +42,7 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
   const durationSeconds = Math.max(items.length * 4, 15);
 
   return (
-    <div className="w-full overflow-hidden border-b border-border bg-accent/10 py-2">
+    <div className={`${stickyBleedClasses} overflow-hidden border-b border-border bg-accent/10 py-2`}>
       <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <span className="shrink-0 text-sm font-semibold text-accent">공지</span>
         <div className="relative flex-1 overflow-hidden">
