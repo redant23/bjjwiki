@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
@@ -40,11 +41,12 @@ export default async function RootLayout({
             <div className="flex-1 flex">
               <Sidebar initialTree={tree} />
               <main className="relative w-full min-w-0 md:ml-64">
-                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 lg:py-10">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:py-10 md:pb-10">
                   {children}
                 </div>
               </main>
             </div>
+            <MobileBottomNav initialTree={tree} />
           </div>
         </Providers>
       </body>
