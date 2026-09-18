@@ -415,66 +415,68 @@ export default function TechniquePage() {
 
   return (
     <div className="w-full">
-      {/* Breadcrumbs */}
-      <Breadcrumb
-        items={breadcrumbPath.map((item, index) => ({
-          label: item.name,
-          href: `/technique/${breadcrumbPath.slice(0, index + 1).map(p => p.slug).join('/')}`
-        }))}
-      />
+      {/* Breadcrumbs + Action Buttons: 같은 행에서 수평으로 맞춘다 — 썸네일/제목
+          영역 위에 절대 위치로 띄우면 이름이 길 때 겹쳐 가려지는 문제가 있었다. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <Breadcrumb
+          items={breadcrumbPath.map((item, index) => ({
+            label: item.name,
+            href: `/technique/${breadcrumbPath.slice(0, index + 1).map(p => p.slug).join('/')}`
+          }))}
+        />
+
+        <div className="flex gap-2">
+          {canEdit && !isEditing && (
+            <div className="flex items-center divide-x divide-input overflow-hidden rounded-md border border-input bg-background shadow-sm">
+              <SkillStatusControls techniqueId={technique._id} />
+              <button
+                onClick={handleEdit}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                수정
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  삭제
+                </button>
+              )}
+            </div>
+          )}
+
+          {isEditing && (
+            <>
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? '저장 중...' : '저장'}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
 
       <article className="space-y-8">
         {/* Header Area */}
-        <header className="relative mb-8">
-          {/* Action Buttons */}
-          <div className="absolute top-0 right-0 flex gap-2 z-10">
-            {canEdit && !isEditing && (
-              <div className="flex items-center divide-x divide-input overflow-hidden rounded-md border border-input bg-background shadow-sm">
-                <SkillStatusControls techniqueId={technique._id} />
-                <button
-                  onClick={handleEdit}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors"
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                  수정
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={handleDeleteClick}
-                    disabled={deleting}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    삭제
-                  </button>
-                )}
-              </div>
-            )}
-
-            {isEditing && (
-              <>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                  취소
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  <Save className="h-4 w-4" />
-                  {saving ? '저장 중...' : '저장'}
-                </button>
-              </>
-            )}
-          </div>
-
+        <header className="mb-8">
           {isEditing ? (
-            <div className="space-y-6 pt-12">
+            <div className="space-y-6">
               {/* Thumbnail Edit */}
               <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
                 <h3 className="text-lg font-semibold">썸네일 이미지</h3>
@@ -613,7 +615,7 @@ export default function TechniquePage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col md:flex-row gap-6 items-start pt-12 md:pt-0">
+            <div className="flex flex-col md:flex-row gap-6 items-start">
               {/* Thumbnail - Left side */}
               {technique.thumbnailUrl && (
                 <div className="w-full md:w-[200px] flex-shrink-0 aspect-square rounded-lg overflow-hidden border border-border bg-muted/50">

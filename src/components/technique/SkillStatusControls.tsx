@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { Heart } from 'lucide-react';
+import { ChevronDown, Heart } from 'lucide-react';
 
 type SkillStatus = 'interested' | 'practicing' | 'frequently_used' | 'signature';
 
@@ -104,20 +104,23 @@ export function SkillStatusControls({ techniqueId }: SkillStatusControlsProps) {
         <Heart className={`h-4 w-4 ${isFavorite ? 'fill-current' : ''}`} />
       </button>
 
-      <select
-        value={skillStatus ?? ''}
-        disabled={saving}
-        onChange={(e) => handleStatusChange(e.target.value)}
-        aria-label="관심도 선택"
-        className="h-full cursor-pointer bg-transparent px-3 py-1.5 text-sm font-medium text-foreground focus:outline-none disabled:opacity-50"
-      >
-        <option value="">관심도 선택</option>
-        {STATUS_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <div className="relative flex h-full items-center">
+        <select
+          value={skillStatus ?? ''}
+          disabled={saving}
+          onChange={(e) => handleStatusChange(e.target.value)}
+          aria-label="관심도 선택"
+          className="h-full cursor-pointer appearance-none bg-transparent py-1.5 pl-3 pr-7 text-sm font-medium text-foreground focus:outline-none disabled:opacity-50"
+        >
+          <option value="">관심도 선택</option>
+          {STATUS_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-muted-foreground" />
+      </div>
 
       {error && (
         <p className="absolute right-0 top-full mt-1 whitespace-nowrap text-xs text-destructive">
