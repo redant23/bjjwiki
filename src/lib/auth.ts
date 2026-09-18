@@ -43,10 +43,15 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = user.role;
         token.id = user.id;
+      }
+      // 클라이언트에서 useSession().update({ name })로 호출한 경우(닉네임 변경
+      // 직후 재로그인 없이 세션에 반영) 토큰의 name만 갱신한다.
+      if (trigger === 'update' && session?.name) {
+        token.name = session.name;
       }
       return token;
     },

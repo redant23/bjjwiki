@@ -71,6 +71,17 @@ export async function PUT(request: Request) {
       );
     }
 
+    let trimmedNickname: string | undefined;
+    if (body.nickname !== undefined) {
+      trimmedNickname = String(body.nickname).trim();
+      if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
+        return NextResponse.json(
+          { success: false, error: '닉네임은 2자 이상 20자 이하로 입력해주세요.' },
+          { status: 400 }
+        );
+      }
+    }
+
     if (
       body.stripe !== undefined &&
       (!Number.isInteger(body.stripe) || body.stripe < 0)
@@ -119,6 +130,20 @@ export async function PUT(request: Request) {
       );
     }
 
+    if (trimmedNickname !== undefined && trimmedNickname !== user.nickname) {
+      const existing = await User.findOne({
+        nickname: trimmedNickname,
+        _id: { $ne: user._id },
+      });
+      if (existing) {
+        return NextResponse.json(
+          { success: false, error: '이미 사용 중인 닉네임입니다.' },
+          { status: 409 }
+        );
+      }
+      user.nickname = trimmedNickname;
+    }
+
     const nextLevel: IUser['level'] =
       body.level !== undefined ? body.level : user.level;
     const maxStripe = MAX_STRIPES_BY_LEVEL[nextLevel];
@@ -138,6 +163,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
+        nickname: user.nickname,
         level: user.level,
         stripe: user.stripe,
         period: user.period,

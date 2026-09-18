@@ -52,13 +52,14 @@ function getTrainingDuration(period: string): { years: number; days: number } {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const { status } = useSession();
+  const { status, update: updateSession } = useSession();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [error, setError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [editForm, setEditForm] = useState({
+    nickname: '',
     level: 'white' as ProfileData['level'],
     stripe: 0,
     period: '',
@@ -91,6 +92,7 @@ export default function ProfilePage() {
   function handleEdit() {
     if (!profile) return;
     setEditForm({
+      nickname: profile.nickname,
       level: profile.level,
       stripe: profile.stripe,
       period: toDateInputValue(profile.period),
@@ -113,6 +115,12 @@ export default function ProfilePage() {
   }
 
   async function handleSave() {
+    const trimmedNickname = editForm.nickname.trim();
+    if (trimmedNickname.length < 2 || trimmedNickname.length > 20) {
+      setSaveError('닉네임은 2자 이상 20자 이하로 입력해주세요.');
+      return;
+    }
+
     setSaving(true);
     setSaveError('');
     try {
@@ -120,6 +128,7 @@ export default function ProfilePage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          nickname: trimmedNickname,
           level: editForm.level,
           stripe: editForm.stripe,
           period: editForm.period,
@@ -129,9 +138,19 @@ export default function ProfilePage() {
       if (data.success) {
         setProfile((prev) =>
           prev
-            ? { ...prev, level: data.data.level, stripe: data.data.stripe, period: data.data.period }
+            ? {
+                ...prev,
+                nickname: data.data.nickname,
+                level: data.data.level,
+                stripe: data.data.stripe,
+                period: data.data.period,
+              }
             : prev
         );
+        // 다음 로그인 전까지도 세션(네비바 등)에 새 닉네임이 즉시 반영되게 한다.
+        if (data.data.nickname) {
+          await updateSession({ name: data.data.nickname });
+        }
         setIsEditing(false);
       } else {
         setSaveError(data.error || '저장하지 못했습니다.');
@@ -175,10 +194,23 @@ export default function ProfilePage() {
             </div>
           )}
 
-          <div className="flex justify-between border-b pb-3">
-            <span className="text-muted-foreground">닉네임</span>
-            <span className="font-medium">{profile.nickname}</span>
-          </div>
+          {isEditing ? (
+            <div className="space-y-2 border-b pb-3">
+              <label className="block text-sm text-muted-foreground">닉네임</label>
+              <input
+                type="text"
+                value={editForm.nickname}
+                maxLength={20}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, nickname: e.target.value }))}
+                className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          ) : (
+            <div className="flex justify-between border-b pb-3">
+              <span className="text-muted-foreground">닉네임</span>
+              <span className="font-medium">{profile.nickname}</span>
+            </div>
+          )}
           <div className="flex justify-between border-b pb-3">
             <span className="text-muted-foreground">이메일</span>
             <span className="font-medium">{profile.email}</span>
