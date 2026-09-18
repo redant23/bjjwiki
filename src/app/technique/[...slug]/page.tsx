@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import Link from 'next/link';
 import { Edit, Save, X, Trash2, Upload, ChevronDown } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
@@ -704,7 +705,7 @@ export default function TechniquePage() {
               </div>
             </div>
           ) : (
-            <ReactMarkdown>{technique.description.ko}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkBreaks]}>{technique.description.ko}</ReactMarkdown>
           )}
         </section>
 
