@@ -3,19 +3,15 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Layers, Shield } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getRecentlyUpdatedTechniques } from "@/lib/technique-service";
-import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
   const isAdmin = session?.user?.role === "admin";
   const showRegisterCta = !session || isAdmin;
   const registerHref = session ? "/technique/new" : "/auth/signup";
-  const recentlyUpdated = await getRecentlyUpdatedTechniques();
 
   return (
     <div className="flex flex-col w-full">
-      <AnnouncementTicker items={recentlyUpdated} />
       {/* Hero Section */}
       <section className="relative w-full py-12 md:py-24 lg:py-32 overflow-hidden">
         <div className="absolute inset-0 z-0">

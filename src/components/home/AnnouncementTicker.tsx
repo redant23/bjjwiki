@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export interface AnnouncementItem {
   _id: string;
@@ -13,22 +14,25 @@ interface AnnouncementTickerProps {
 }
 
 export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
-  if (items.length === 0) {
+  const pathname = usePathname();
+
+  // 홈페이지 전용 공지: 다른 페이지에서는 노출하지 않는다.
+  if (pathname !== '/' || items.length === 0) {
     return null;
   }
 
-  // sticky top-14: 헤더(h-14, 3.5rem)에 딱 붙어 스크롤 시에도 그 아래 고정된다.
-  // -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 lg:-mt-10: 부모(main) 컨테이너의 좌우 padding과
-  // 상단 padding을 상쇄해, 네비바 바로 밑에 여백 없이 붙고 모바일에서는
-  // 컨텐츠 최상단에서 화면 폭 전체를 채운다.
-  const stickyBleedClasses =
-    'sticky top-14 z-40 -mx-4 -mt-6 sm:-mx-6 lg:-mx-8 lg:-mt-10';
+  // 네비바(Navbar)와 형제 레벨(사이드바+메인 위)에 렌더링되므로, 사이드바를
+  // 포함한 화면 전체 폭을 한 줄로 가로지른다. sticky top-14로 네비바
+  // (h-14, 3.5rem) 바로 아래에 붙어 스크롤 중에도 고정되고, 고정 높이
+  // h-10을 둬서 사이드바의 top 오프셋(top-24, layout.tsx 참고)과 어긋나지
+  // 않게 유지한다.
+  const stickyBarClasses = 'sticky top-14 z-40 h-10 w-full border-b border-border bg-accent/10';
 
   if (items.length === 1) {
     const item = items[0];
     return (
-      <div className={`${stickyBleedClasses} border-b border-border bg-accent/10 py-2`}>
-        <div className="mx-auto flex max-w-4xl items-center gap-2 px-4 text-sm sm:px-6 lg:px-8">
+      <div className={stickyBarClasses}>
+        <div className="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 text-sm sm:px-6 lg:px-8">
           <span className="shrink-0 font-semibold text-accent">공지</span>
           <Link href={item.href} className="truncate hover:underline">
             {item.name} 기술이 새로 업데이트되었습니다.
@@ -42,8 +46,8 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
   const durationSeconds = Math.max(items.length * 4, 15);
 
   return (
-    <div className={`${stickyBleedClasses} overflow-hidden border-b border-border bg-accent/10 py-2`}>
-      <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+    <div className={`${stickyBarClasses} overflow-hidden`}>
+      <div className="mx-auto flex h-full max-w-screen-2xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <span className="shrink-0 text-sm font-semibold text-accent">공지</span>
         <div className="relative flex-1 overflow-hidden">
           <div
