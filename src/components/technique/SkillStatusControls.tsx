@@ -91,7 +91,7 @@ export function SkillStatusControls({ techniqueId }: SkillStatusControlsProps) {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 py-4 border-y border-border">
+    <div className="flex flex-wrap items-center gap-2">
       {STATUS_OPTIONS.map((option) => (
         <button
           key={option.value}

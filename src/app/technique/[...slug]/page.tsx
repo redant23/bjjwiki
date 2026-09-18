@@ -426,53 +426,28 @@ export default function TechniquePage() {
       <article className="space-y-8">
         {/* Header Area */}
         <header className="relative mb-8">
-          {/* Action Buttons */}
-          <div className="absolute top-0 right-0 flex gap-2 z-10">
-            {canEdit && !isEditing && (
-              <div className="flex items-center rounded-md border border-input bg-background shadow-sm">
-                <button
-                  onClick={handleEdit}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors rounded-l-md ${
-                    isAdmin ? 'border-r border-input' : 'rounded-r-md'
-                  }`}
-                >
-                  <Edit className="h-3.5 w-3.5" />
-                  수정
-                </button>
-                {isAdmin && (
-                  <button
-                    onClick={handleDeleteClick}
-                    disabled={deleting}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 rounded-r-md"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    삭제
-                  </button>
-                )}
-              </div>
-            )}
-
-            {isEditing && (
-              <>
-                <button
-                  onClick={handleCancel}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                  취소
-                </button>
-                <button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-                >
-                  <Save className="h-4 w-4" />
-                  {saving ? '저장 중...' : '저장'}
-                </button>
-              </>
-            )}
-          </div>
+          {/* Action Buttons (편집 모드에서만 헤더 위에 떠 있음 — 보기 모드의
+              수정/삭제는 아래 배너에서 관심 표시 액션과 함께 노출된다) */}
+          {isEditing && (
+            <div className="absolute top-0 right-0 flex gap-2 z-10">
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                취소
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? '저장 중...' : '저장'}
+              </button>
+            </div>
+          )}
 
           {isEditing ? (
             <div className="space-y-6 pt-12">
@@ -614,7 +589,7 @@ export default function TechniquePage() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col md:flex-row gap-6 items-start pt-12 md:pt-0">
+            <div className="flex flex-col md:flex-row gap-6 items-start">
               {/* Thumbnail - Left side */}
               {technique.thumbnailUrl && (
                 <div className="w-full md:w-[200px] flex-shrink-0 aspect-square rounded-lg overflow-hidden border border-border bg-muted/50">
@@ -654,7 +629,32 @@ export default function TechniquePage() {
           )}
         </header>
 
-        {!isEditing && <SkillStatusControls techniqueId={technique._id} />}
+        {!isEditing && canEdit && (
+          <div className="flex flex-wrap items-center justify-between gap-3 py-4 border-y border-border">
+            <SkillStatusControls techniqueId={technique._id} />
+            <div className="flex items-center rounded-md border border-input bg-background shadow-sm shrink-0">
+              <button
+                onClick={handleEdit}
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors rounded-l-md ${
+                  isAdmin ? 'border-r border-input' : 'rounded-r-md'
+                }`}
+              >
+                <Edit className="h-3.5 w-3.5" />
+                수정
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={handleDeleteClick}
+                  disabled={deleting}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 rounded-r-md"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  삭제
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Media */}
         {isEditing ? (
