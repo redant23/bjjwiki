@@ -42,7 +42,11 @@ interface Technique {
 }
 
 function formatKoDate(value: string) {
-  return new Date(value).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
+  const d = new Date(value);
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
 export default function TechniquePage() {
@@ -750,11 +754,11 @@ export default function TechniquePage() {
 
         <footer className="pt-6 text-sm text-muted-foreground border-t border-border space-y-1">
           <p>
-            최초 게시: {formatKoDate(technique.createdAt)}
+            최초 게시일: {formatKoDate(technique.createdAt)}
             {technique.createdBy && ` · 게시자: ${technique.createdBy.nickname}`}
           </p>
           <p>
-            최종 수정: {formatKoDate(technique.updatedAt)}
+            최종 수정일: {formatKoDate(technique.updatedAt)}
             {technique.lastEditedBy && ` · 수정자: ${technique.lastEditedBy.nickname}`}
           </p>
         </footer>

@@ -11,7 +11,7 @@ import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "오쓰그라운드 |함께 만드는 주짓수 기술 라이브러리",
+  title: "오쓰그라운드 | 함께 만드는 주짓수 기술 라이브러리",
   description: "A community-built Brazilian Jiu-Jitsu (BJJ) technique and combo library. Share, edit, and connect techniques.",
   appleWebApp: {
     capable: true,
