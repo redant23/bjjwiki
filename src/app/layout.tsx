@@ -13,11 +13,17 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "오쓰그라운드 |함께 만드는 주짓수 기술 라이브러리",
   description: "A community-built Brazilian Jiu-Jitsu (BJJ) technique and combo library. Share, edit, and connect techniques.",
+  appleWebApp: {
+    capable: true,
+    title: "오쓰그라운드",
+    statusBarStyle: "default",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },
       { url: "/icon.png", type: "image/png" },
     ],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
