@@ -7,7 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { SearchModal } from '@/components/ui/SearchModal';
 import { NotificationBell } from '@/components/layout/NotificationBell';
-import { Logo } from '@/components/brand/Logo';
+import { LogoMark } from '@/components/brand/Logo';
 
 export function NavbarClient() {
   const { theme, setTheme } = useTheme();
@@ -33,7 +33,7 @@ export function NavbarClient() {
           {/* Logo */}
           <div className="mr-4 flex items-center">
             <Link href="/" aria-label="ossground" className="mr-6 flex items-center hover:opacity-80 transition-opacity">
-              <Logo />
+              <LogoMark className="h-8 text-foreground" />
             </Link>
           </div>
 

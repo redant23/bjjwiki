@@ -29,12 +29,3 @@ export function LogoMark({ className }: { className?: string }) {
 export function LogoWordmark({ className }: { className?: string }) {
   return <MaskedSvg src="/brand/ossground.svg" label="ossground" aspect={1704.2 / 348.1} className={className} />;
 }
-
-export function Logo({ className }: { className?: string }) {
-  return (
-    <span className={cn('inline-flex items-center gap-2.5 text-foreground', className)}>
-      <LogoMark className="h-8" />
-      <LogoWordmark className="h-4" />
-    </span>
-  );
-}

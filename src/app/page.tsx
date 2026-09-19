@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen, Layers, Shield } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { LogoWordmark } from "@/components/brand/Logo";
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
@@ -28,11 +29,11 @@ export default async function Home() {
         <div className="relative z-10">
           <div className="flex flex-col items-center space-y-6 text-center">
             <div className="space-y-4">
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-                오스그라운드
+              <h1 className="flex justify-center text-foreground">
+                <LogoWordmark className="h-10 sm:h-12 md:h-16" />
               </h1>
               <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
-                함께 만드는 주짓수 기술 라이브러리.
+                함께 만드는 주짓수 기술 라이브러리.{' '}
                 <br className="hidden sm:inline" />
                 함께 배우고, 기록하고, 성장하세요.
               </p>
