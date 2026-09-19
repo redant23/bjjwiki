@@ -7,6 +7,7 @@ import { useSession, signOut } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { SearchModal } from '@/components/ui/SearchModal';
 import { NotificationBell } from '@/components/layout/NotificationBell';
+import { Logo } from '@/components/brand/Logo';
 
 export function NavbarClient() {
   const { theme, setTheme } = useTheme();
@@ -31,10 +32,8 @@ export function NavbarClient() {
         <div className="container mx-auto hidden h-14 max-w-screen-2xl items-center px-4 sm:px-6 lg:px-8 md:flex">
           {/* Logo */}
           <div className="mr-4 flex items-center">
-            <Link href="/" className="mr-6 flex items-center space-x-2 hover:opacity-80 transition-opacity">
-              <span className="font-bold text-lg tracking-tight text-foreground">
-                BJJ Wiki
-              </span>
+            <Link href="/" aria-label="ossground" className="mr-6 flex items-center hover:opacity-80 transition-opacity">
+              <Logo />
             </Link>
           </div>
 

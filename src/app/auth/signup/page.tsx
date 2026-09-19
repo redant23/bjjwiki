@@ -44,7 +44,7 @@ export default function SignUp() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">회원가입</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            BJJ Wiki 계정을 만드세요
+            ossground 계정을 만드세요
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

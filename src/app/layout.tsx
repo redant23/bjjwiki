@@ -11,8 +11,8 @@ import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "BJJ Wiki",
-  description: "A community-driven Brazilian Jiu-Jitsu technique database",
+  title: "ossground | The Community-Built BJJ Technique Library",
+  description: "A community-built Brazilian Jiu-Jitsu (BJJ) technique and combo library. Share, edit, and connect techniques.",
 };
 
 import { getTechniqueTree, getRecentlyUpdatedTechniques } from "@/lib/technique-service";
