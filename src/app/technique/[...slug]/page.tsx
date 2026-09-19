@@ -35,9 +35,14 @@ interface Technique {
   images: { url: string; captionKo?: string; captionEn?: string }[];
   thumbnailUrl?: string;
   roleTags?: string[];
+  createdAt: string;
   updatedAt: string;
   createdBy?: { nickname: string } | null;
   lastEditedBy?: { nickname: string } | null;
+}
+
+function formatKoDate(value: string) {
+  return new Date(value).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 export default function TechniquePage() {
@@ -743,10 +748,15 @@ export default function TechniquePage() {
           </section>
         )}
 
-        <footer className="pt-6 text-sm text-muted-foreground border-t border-border">
-          최종 수정: {new Date(technique.updatedAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
-          {technique.createdBy && ` · 게시자: ${technique.createdBy.nickname}`}
-          {technique.lastEditedBy && ` · 수정자: ${technique.lastEditedBy.nickname}`}
+        <footer className="pt-6 text-sm text-muted-foreground border-t border-border space-y-1">
+          <p>
+            최초 게시: {formatKoDate(technique.createdAt)}
+            {technique.createdBy && ` · 게시자: ${technique.createdBy.nickname}`}
+          </p>
+          <p>
+            최종 수정: {formatKoDate(technique.updatedAt)}
+            {technique.lastEditedBy && ` · 수정자: ${technique.lastEditedBy.nickname}`}
+          </p>
         </footer>
       </article>
 
