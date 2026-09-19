@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Edit, Save, X } from 'lucide-react';
 import { MySkillsSection } from '@/components/profile/MySkillsSection';
 import { MyRequestsSection } from '@/components/profile/MyRequestsSection';
+import { BeltBadge } from '@/components/profile/BeltBadge';
 
 interface ProfileData {
   email: string;
@@ -248,6 +249,10 @@ export default function ProfilePage() {
                 </select>
               </div>
 
+              <div className="flex justify-center border-b pb-3">
+                <BeltBadge level={editForm.level} stripe={editForm.stripe} className="h-8" />
+              </div>
+
               <div className="space-y-2">
                 <label className="block text-sm text-muted-foreground">수련 시작일</label>
                 <input
@@ -288,7 +293,8 @@ export default function ProfilePage() {
             <>
               <div className="flex justify-between border-b pb-3">
                 <span className="text-muted-foreground">벨트 등급</span>
-                <span className="font-medium">
+                <span className="flex flex-col items-end gap-1.5 font-medium">
+                  <BeltBadge level={profile.level} stripe={profile.stripe} />
                   {LEVEL_LABELS[profile.level]} · 그랄 {profile.stripe}개
                 </span>
               </div>
