@@ -44,12 +44,12 @@ export default function SignUp() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-bold">회원가입</h1>
           <p className="text-gray-500 dark:text-gray-400">
-            ossground 계정을 만드세요
+            오쓰그라운드 계정을 만드세요
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">이메일</label>
             <input
               id="email"
               type="email"
@@ -60,7 +60,7 @@ export default function SignUp() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="nickname">Nickname</label>
+            <label htmlFor="nickname">닉네임</label>
             <input
               id="nickname"
               type="text"
@@ -71,7 +71,7 @@ export default function SignUp() {
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">비밀번호</label>
             <input
               id="password"
               type="password"
@@ -88,7 +88,7 @@ export default function SignUp() {
             disabled={loading}
             className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
           >
-            {loading ? '가입 중...' : 'Sign Up'}
+            {loading ? '가입 중...' : '회원가입'}
           </button>
         </form>
         <p className="text-center text-sm text-muted-foreground">
