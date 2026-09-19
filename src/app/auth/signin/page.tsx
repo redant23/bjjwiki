@@ -1,6 +1,6 @@
 'use client';
 
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -22,7 +22,8 @@ export default function SignIn() {
     if (result?.error) {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.');
     } else {
-      router.push('/admin');
+      const session = await getSession();
+      router.push(session?.user?.role === 'admin' ? '/admin' : '/');
     }
   };
 
