@@ -29,10 +29,10 @@ export default async function Home() {
           <div className="flex flex-col items-center space-y-6 text-center">
             <div className="space-y-4">
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-                주짓수 위키
+                오스그라운드
               </h1>
               <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
-                커뮤니티 주도형 브라질리언 주짓수 기술 데이터베이스.
+                함께 만드는 주짓수 기술 라이브러리.
                 <br className="hidden sm:inline" />
                 함께 배우고, 기록하고, 성장하세요.
               </p>

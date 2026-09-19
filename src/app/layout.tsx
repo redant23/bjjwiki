@@ -13,6 +13,12 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ossground | The Community-Built BJJ Technique Library",
   description: "A community-built Brazilian Jiu-Jitsu (BJJ) technique and combo library. Share, edit, and connect techniques.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+  },
 };
 
 import { getTechniqueTree, getRecentlyUpdatedTechniques } from "@/lib/technique-service";
