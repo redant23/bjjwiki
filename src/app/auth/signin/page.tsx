@@ -60,6 +60,14 @@ export default function SignIn() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          <div className="text-right">
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-muted-foreground underline hover:text-foreground"
+            >
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <button
             type="submit"
