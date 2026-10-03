@@ -1,12 +1,23 @@
 'use client';
 
 import { signIn, getSession } from 'next-auth/react';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import GoogleButton from '@/components/auth/GoogleButton';
 
-export default function SignIn() {
+function getOAuthErrorMessage(code: string | null): string {
+  if (!code) return '';
+  if (code === 'AccessDenied') {
+    return '구글 계정을 확인할 수 없어 로그인하지 못했습니다. 이메일 인증이 완료된 구글 계정인지 확인해 주세요.';
+  }
+  return '로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.';
+}
+
+function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryError = getOAuthErrorMessage(searchParams.get('error'));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -59,7 +70,17 @@ export default function SignIn() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="text-right">
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-muted-foreground underline hover:text-foreground"
+            >
+              비밀번호를 잊으셨나요?
+            </Link>
+          </div>
+          {(error || queryError) && (
+            <p className="text-sm text-red-500">{error || queryError}</p>
+          )}
           <button
             type="submit"
             className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
@@ -67,6 +88,12 @@ export default function SignIn() {
             로그인
           </button>
         </form>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="h-px flex-1 bg-border" />
+          또는
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton label="Google로 계속하기" />
         <p className="text-center text-sm text-muted-foreground">
           계정이 없나요?{' '}
           <Link href="/auth/signup" className="underline hover:text-foreground">
@@ -75,5 +102,13 @@ export default function SignIn() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }

@@ -20,6 +20,15 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## 환경 변수
+
+`.env.local`에 아래 값을 설정합니다. (실제 값은 저장소에 커밋하지 않습니다.)
+
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`: 구글 로그인용 OAuth 클라이언트. 구글 콘솔의 승인된 리디렉션 URI에 `{NEXTAUTH_URL}/api/auth/callback/google`을 등록해야 합니다.
+- `RESEND_API_KEY`: 비밀번호 재설정 메일 발송용 Resend API 키. 개발 환경에서는 선택 사항이며, 없으면 재설정 링크가 서버 콘솔에 출력됩니다.
+- `MAIL_FROM`: 발신 주소. Resend에서 인증된 발신 도메인의 주소여야 하며, 프로덕션에서는 필수입니다.
+- `NEXTAUTH_URL`, `NEXTAUTH_SECRET`: 프로덕션에서는 반드시 설정해야 합니다. (`NEXTAUTH_URL`은 재설정 메일의 링크 주소에도 사용됩니다.)
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

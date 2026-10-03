@@ -1,9 +1,11 @@
 import { NextAuthOptions, getServerSession, Session } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import GoogleProvider, { GoogleProfile } from 'next-auth/providers/google';
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
+import { findOrCreateGoogleUser } from '@/lib/google-user';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -24,7 +26,7 @@ export const authOptions: NextAuthOptions = {
           email: credentials.email.toLowerCase().trim(),
         }).select('+password');
 
-        if (!user) {
+        if (!user || !user.password) {
           return null;
         }
 
@@ -41,15 +43,43 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+    }),
   ],
   callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
+    async signIn({ account, profile }) {
+      if (account?.provider !== 'google') {
+        return true;
+      }
+      const google = profile as GoogleProfile | undefined;
+      if (!google?.email || !google.email_verified) {
+        return false;
+      }
+      const result = await findOrCreateGoogleUser({
+        email: google.email,
+        name: google.name,
+        googleId: google.sub,
+      });
+      return result.ok;
+    },
+    async jwt({ token, user, account, trigger, session }) {
+      if (account?.provider === 'google' && token.email) {
+        await dbConnect();
+        const dbUser = await User.findOne({
+          email: token.email.toLowerCase(),
+        }).select('role nickname');
+        if (!dbUser) {
+          throw new Error('Google user not found after sign-in');
+        }
+        token.id = dbUser._id.toString();
+        token.role = dbUser.role;
+        token.name = dbUser.nickname;
+      } else if (user) {
         token.role = user.role;
         token.id = user.id;
       }
-      // 클라이언트에서 useSession().update({ name })로 호출한 경우(닉네임 변경
-      // 직후 재로그인 없이 세션에 반영) 토큰의 name만 갱신한다.
       if (trigger === 'update' && session?.name) {
         token.name = session.name;
       }
@@ -65,6 +95,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
 };
 
