@@ -1,8 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkBreaks from 'remark-breaks';
+import { MarkdownContent } from './MarkdownContent';
 import {
   Bold,
   Italic,
@@ -226,14 +225,13 @@ export function MarkdownEditor({ value, onChange, placeholder, label, excludeTec
             />
           </>
         ) : (
-          <div className="w-full p-4 min-h-[300px] prose prose-zinc dark:prose-invert max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline overflow-y-auto">
+          <div className="w-full p-4 min-h-[300px] overflow-y-auto">
             {value ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkBreaks]}
+              <MarkdownContent
                 components={{ a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" /> }}
               >
                 {value}
-              </ReactMarkdown>
+              </MarkdownContent>
             ) : (
               <p className="text-muted-foreground italic">미리보기 내용이 없습니다.</p>
             )}

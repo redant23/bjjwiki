@@ -260,3 +260,95 @@
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+/* ---------- Markdown 본문 (기술 상세 / 에디터 Preview 공용) ---------- */
+.md-content {
+  max-width: 72ch;
+  font-size: 1rem;
+  line-height: 1.75;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  color: hsl(var(--foreground) / 0.9);
+}
+
+.md-content > :first-child { margin-top: 0; }
+.md-content > :last-child { margin-bottom: 0; }
+
+.md-content p { margin: 0 0 0.75rem; }
+.md-content p:last-child { margin-bottom: 0; }
+
+/* 리드 문단: 첫 ### 이전의 첫 문단 */
+.md-content > p:first-child {
+  font-size: 1.125rem;
+  line-height: 1.8;
+  color: hsl(var(--foreground) / 0.8);
+}
+
+.md-content strong { font-weight: 600; color: hsl(var(--foreground)); }
+.md-content a { color: hsl(var(--accent)); text-decoration: underline; text-underline-offset: 3px; }
+.md-content a:hover { text-decoration: underline; }
+
+.md-content ul,
+.md-content ol { margin: 0 0 0.75rem; padding-left: 1.5rem; }
+.md-content ul { list-style: disc; }
+.md-content ol { list-style: decimal; }
+.md-content li { margin: 0 0 0.5rem; padding-left: 0.25rem; }
+.md-content li:last-child { margin-bottom: 0; }
+.md-content li::marker { color: hsl(var(--muted-foreground)); }
+.md-content ol > li::marker { font-weight: 600; font-variant-numeric: tabular-nums; }
+.md-content li > ul,
+.md-content li > ol { margin: 0.5rem 0 0; }
+
+/* 소제목 */
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4 {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+}
+.md-content h1 { font-size: 1.5rem; margin: 2rem 0 0.75rem; }
+.md-content h2 { font-size: 1.375rem; margin: 2rem 0 0.75rem; }
+.md-content h4 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+
+.md-content .md-section { margin-top: 2rem; }
+.md-content > .md-section:first-child { margin-top: 0; }
+.md-content .md-section > h3 {
+  font-size: 1.25rem;
+  margin: 0 0 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 3px solid hsl(var(--accent));
+}
+
+/* "기본 동작 방법" 등 순서가 있는 섹션: "-" 목록을 번호 목록처럼 */
+.md-content .md-section[data-kind="steps"] > ul { list-style: decimal; }
+.md-content .md-section[data-kind="steps"] > ul > li::marker { font-weight: 600; }
+
+/* 안전 수칙 / 주의: 절제된 콜아웃 */
+.md-content .md-section[data-kind="warning"] {
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+  background: color-mix(in srgb, #f59e0b 9%, transparent);
+}
+.md-content .md-section[data-kind="warning"] > h3 { border-left-color: #f59e0b; }
+.md-content .md-section[data-kind="warning"] li::marker { color: #d97706; }
+
+.md-content code {
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: hsl(var(--muted));
+}
+.md-content blockquote {
+  margin: 0 0 0.75rem;
+  padding-left: 1rem;
+  border-left: 3px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+}
+.md-content hr { margin: 1.5rem 0; border-color: hsl(var(--border)); }
+
+@media (max-width: 640px) {
+  .md-content > p:first-child { font-size: 1.0625rem; }
+  .md-content .md-section[data-kind="warning"] { padding: 0.875rem 1rem; }
+}
