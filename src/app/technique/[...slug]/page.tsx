@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import ReactMarkdown from 'react-markdown';
-import remarkBreaks from 'remark-breaks';
 import Link from 'next/link';
 import { Edit, Save, X, Trash2, Upload, ChevronDown } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { Breadcrumb } from '@/components/ui/Breadcrumb';
 import { TagInput } from '@/components/ui/TagInput';
@@ -693,7 +692,7 @@ export default function TechniquePage() {
         )}
 
         {/* Description */}
-        <section className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-semibold prose-p:text-foreground/90 prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-strong:text-foreground">
+        <section>
           {isEditing ? (
             <div className="space-y-4">
               <MarkdownEditor
@@ -715,8 +714,7 @@ export default function TechniquePage() {
               </div>
             </div>
           ) : (
-            <ReactMarkdown
-              remarkPlugins={[remarkBreaks]}
+            <MarkdownContent
               components={{
                 a: ({ href, children, ...rest }) =>
                   href && !href.startsWith('http') ? (
@@ -727,7 +725,7 @@ export default function TechniquePage() {
               }}
             >
               {technique.description.ko}
-            </ReactMarkdown>
+            </MarkdownContent>
           )}
         </section>
 
