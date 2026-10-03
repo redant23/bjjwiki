@@ -4,6 +4,7 @@ import { signIn, getSession } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import GoogleButton from '@/components/auth/GoogleButton';
 
 export default function SignIn() {
   const router = useRouter();
@@ -67,6 +68,12 @@ export default function SignIn() {
             로그인
           </button>
         </form>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="h-px flex-1 bg-border" />
+          또는
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton label="Google로 계속하기" />
         <p className="text-center text-sm text-muted-foreground">
           계정이 없나요?{' '}
           <Link href="/auth/signup" className="underline hover:text-foreground">

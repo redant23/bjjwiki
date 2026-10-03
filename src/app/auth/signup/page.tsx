@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import GoogleButton from '@/components/auth/GoogleButton';
 
 export default function SignUp() {
   const router = useRouter();
@@ -91,6 +92,12 @@ export default function SignUp() {
             {loading ? '가입 중...' : '회원가입'}
           </button>
         </form>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="h-px flex-1 bg-border" />
+          또는
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton label="Google로 계속하기" />
         <p className="text-center text-sm text-muted-foreground">
           이미 계정이 있나요?{' '}
           <Link href="/auth/signin" className="underline hover:text-foreground">
