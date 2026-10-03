@@ -8,7 +8,8 @@ export interface IUserSkill {
 
 export interface IUser extends Document {
   email: string;
-  password: string;
+  password?: string;
+  googleId?: string;
   nickname: string;
   role: 'user' | 'admin';
   level: 'white' | 'blue' | 'purple' | 'brown' | 'black';
@@ -51,7 +52,8 @@ const UserSchema: Schema = new Schema(
       trim: true,
       index: true,
     },
-    password: { type: String, required: true, select: false },
+    password: { type: String, select: false },
+    googleId: { type: String, unique: true, sparse: true },
     nickname: { type: String, required: true, unique: true, trim: true },
     role: {
       type: String,

@@ -24,7 +24,7 @@ export const authOptions: NextAuthOptions = {
           email: credentials.email.toLowerCase().trim(),
         }).select('+password');
 
-        if (!user) {
+        if (!user || !user.password) {
           return null;
         }
 
