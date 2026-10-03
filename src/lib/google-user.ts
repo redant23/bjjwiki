@@ -73,27 +73,36 @@ export async function findOrCreateGoogleUser({
       ? 'admin'
       : 'user';
 
-  try {
-    const created = await User.create({
-      email: normalizedEmail,
-      googleId,
-      nickname: await generateNickname(name, normalizedEmail),
-      role,
-    });
-    return { ok: true, user: toAuthUser(created) };
-  } catch (error: unknown) {
-    // 동시 로그인으로 같은 이메일이 먼저 만들어진 경우
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      (error as { code?: number }).code === 11000
-    ) {
+  const MAX_ATTEMPTS = 3;
+  let nickname = await generateNickname(name, normalizedEmail);
+
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const created = await User.create({
+        email: normalizedEmail,
+        googleId,
+        nickname,
+        role,
+      });
+      return { ok: true, user: toAuthUser(created) };
+    } catch (error: unknown) {
+      const dup = error as {
+        code?: number;
+        keyPattern?: Record<string, unknown>;
+      } | null;
+      if (typeof error !== 'object' || dup?.code !== 11000) {
+        throw error;
+      }
+      // 동시 로그인으로 같은 이메일이 먼저 만들어진 경우
       const raced = await User.findOne({ email: normalizedEmail });
       if (raced) {
         return { ok: true, user: toAuthUser(raced) };
       }
+      // 닉네임 중복(동시 가입)이면 새 닉네임으로 재시도
+      if (!dup.keyPattern?.nickname || attempt >= MAX_ATTEMPTS) {
+        throw error;
+      }
+      nickname = await generateNickname(name, normalizedEmail);
     }
-    throw error;
   }
 }
