@@ -20,7 +20,9 @@ async function generateNickname(
   name: string | null | undefined,
   email: string
 ): Promise<string> {
-  const base = (name ?? '').replace(/\s+/g, '') || email.split('@')[0];
+  const rawBase = (name ?? '').replace(/\s+/g, '') || email.split('@')[0];
+  // 닉네임 규칙: 2~20자
+  const base = rawBase.length >= 2 ? rawBase : `${rawBase}user`;
   const root = base.slice(0, 16);
 
   for (let i = 0; i < 10; i++) {
@@ -30,7 +32,7 @@ async function generateNickname(
       return candidate;
     }
   }
-  return `${root}${Date.now()}`;
+  return `${root.slice(0, 7)}${Date.now()}`;
 }
 
 function toAuthUser(user: {

@@ -70,11 +70,12 @@ export const authOptions: NextAuthOptions = {
         const dbUser = await User.findOne({
           email: token.email.toLowerCase(),
         }).select('role nickname');
-        if (dbUser) {
-          token.id = dbUser._id.toString();
-          token.role = dbUser.role;
-          token.name = dbUser.nickname;
+        if (!dbUser) {
+          throw new Error('Google user not found after sign-in');
         }
+        token.id = dbUser._id.toString();
+        token.role = dbUser.role;
+        token.name = dbUser.nickname;
       } else if (user) {
         token.role = user.role;
         token.id = user.id;
@@ -94,6 +95,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
+    error: '/auth/signin',
   },
 };
 

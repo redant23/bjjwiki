@@ -14,6 +14,16 @@ export async function sendPasswordResetEmail(
     throw new Error('RESEND_API_KEY is not set');
   }
 
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !process.env.MAIL_FROM) {
+    throw new Error('MAIL_FROM is not set');
+  }
+  if (isProduction && !resetUrl.startsWith('http')) {
+    throw new Error(
+      'Reset URL is not absolute; set NEXTAUTH_URL in production'
+    );
+  }
+
   const resend = new Resend(apiKey);
   const { error } = await resend.emails.send({
     from: process.env.MAIL_FROM ?? 'onboarding@resend.dev',
