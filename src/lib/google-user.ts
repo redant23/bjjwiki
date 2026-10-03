@@ -64,7 +64,12 @@ export async function findOrCreateGoogleUser({
       return { ok: false };
     }
     if (!existing.googleId) {
-      await User.updateOne({ _id: existing._id }, { $set: { googleId } });
+      // 최초 연결 시 기존 비밀번호를 제거한다 (선가입 공격자가 설정한 비밀번호가
+      // 연결 후에도 남아 계정을 탈취하는 것을 방지). 이후 비밀번호 재설정으로 새로 설정 가능.
+      await User.updateOne(
+        { _id: existing._id },
+        { $set: { googleId }, $unset: { password: '' } }
+      );
     }
     return { ok: true, user: toAuthUser(existing) };
   }
