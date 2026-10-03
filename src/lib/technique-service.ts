@@ -51,6 +51,17 @@ export const getTechniqueTree = unstable_cache(
 // 일반 계정의 등록/수정 요청 payload에서 허용할 필드 목록.
 // TechniqueRequest 승인 시 이 필드 밖의 값(status, order, viewCount, createdBy 등)은
 // 절대 라이브 데이터에 반영되지 않는다.
+// 홈 히어로의 "N개의 주짓수 기술" 카운터용. 트리와 같은 태그를 쓰므로
+// 기술이 추가/삭제되어 'technique-tree'가 무효화되면 함께 갱신된다.
+export const getPublishedTechniqueCount = unstable_cache(
+  async () => {
+    await dbConnect();
+    return Technique.countDocuments({ status: 'published' });
+  },
+  ['published-technique-count'],
+  { revalidate: 3600, tags: ['technique-tree'] }
+);
+
 export const EDITABLE_TECHNIQUE_FIELDS = [
   'name',
   'aka',

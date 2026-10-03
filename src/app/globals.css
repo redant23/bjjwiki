@@ -175,8 +175,84 @@
   }
 }
 
+/* ---- Home hero motion ---- */
+
+/* 카운터 숫자: 브랜드 핑크 그라데이션이 흐르는 텍스트 */
+.counter-number {
+  background-image: linear-gradient(
+    100deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--accent)) 35%,
+    hsl(var(--foreground)) 55%,
+    hsl(var(--accent)) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-flow 3s linear infinite;
+}
+
+/* 카운팅이 끝나는 순간 한 번 '탁' 튀어오르는 강조 */
+.counter-done {
+  animation: gradient-flow 3s linear infinite, counter-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.counter-glow {
+  animation: counter-glow 3.2s ease-in-out infinite;
+}
+
+/* 오쓰그라운드 워드마크: 빛이 한 번씩 훑고 지나간다 */
+.logo-shimmer {
+  background-image: linear-gradient(
+    105deg,
+    hsl(var(--foreground)) 0%,
+    hsl(var(--foreground)) 40%,
+    hsl(var(--accent)) 50%,
+    hsl(var(--foreground)) 60%,
+    hsl(var(--foreground)) 100%
+  );
+  background-size: 300% 100%;
+  animation: logo-shimmer 4.5s ease-in-out infinite;
+}
+
+.hero-blob {
+  animation: hero-float 9s ease-in-out infinite;
+}
+
+@keyframes gradient-flow {
+  from { background-position: 0% 0; }
+  to { background-position: -250% 0; }
+}
+
+@keyframes counter-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+@keyframes counter-glow {
+  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(0.9); }
+  50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+@keyframes logo-shimmer {
+  0%, 20% { background-position: 100% 0; }
+  70%, 100% { background-position: 0% 0; }
+}
+
+@keyframes hero-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -24px, 0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee {
+  .animate-marquee,
+  .counter-number,
+  .counter-done,
+  .counter-glow,
+  .logo-shimmer,
+  .hero-blob {
     animation: none;
   }
 }

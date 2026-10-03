@@ -4,9 +4,14 @@ import { ArrowRight, BookOpen, Layers, Shield } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { LogoWordmark } from "@/components/brand/Logo";
+import { TechniqueCounter } from "@/components/home/TechniqueCounter";
+import { getPublishedTechniqueCount } from "@/lib/technique-service";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  const [session, techniqueCount] = await Promise.all([
+    getServerSession(authOptions),
+    getPublishedTechniqueCount(),
+  ]);
   const isAdmin = session?.user?.role === "admin";
   const showRegisterCta = !session || isAdmin;
   const registerHref = session ? "/technique/new" : "/auth/signup";
@@ -26,12 +31,22 @@ export default async function Home() {
           <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/60 to-background" />
         </div>
 
+        {/* 배경에 천천히 떠다니는 브랜드 컬러 오브 */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+          <div className="hero-blob absolute -left-16 top-8 h-56 w-56 rounded-full bg-accent/25 blur-3xl" />
+          <div
+            className="hero-blob absolute -right-10 bottom-4 h-64 w-64 rounded-full bg-accent/20 blur-3xl"
+            style={{ animationDelay: '-4s' }}
+          />
+        </div>
+
         <div className="relative z-10">
-          <div className="flex flex-col items-center space-y-6 text-center">
-            <div className="space-y-4">
+          <div className="flex flex-col items-center space-y-8 text-center">
+            <div className="space-y-8">
               <h1 className="flex justify-center text-foreground">
-                <LogoWordmark className="h-10 sm:h-12 md:h-16" />
+                <LogoWordmark className="logo-shimmer h-12 sm:h-14 md:h-20" />
               </h1>
+              <TechniqueCounter count={techniqueCount} />
               <p className="mx-auto max-w-[700px] text-lg text-muted-foreground md:text-xl">
                 함께 만드는 주짓수 기술 라이브러리.{' '}
                 <br className="hidden sm:inline" />
