@@ -14,6 +14,8 @@ import { RoleTagInput } from '@/components/ui/RoleTagInput';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 import { getFirstYoutubeThumbnail } from '@/lib/youtube';
+import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
+import { isValidSlug, slugify } from '@/lib/technique-slug';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -24,6 +26,7 @@ export default function NewTechniquePage() {
   // Form State
   const [formData, setFormData] = useState({
     name: { ko: '', en: '' },
+    slug: '', // 관리자 전용, 비우면 자동 생성
     aka: { ko: [] as string[], en: [] as string[] },
     description: { ko: '', en: '' },
     type: 'both',
@@ -94,6 +97,7 @@ export default function NewTechniquePage() {
     setFormData((prev) => ({
       ...prev,
       name: { ko: '', en: '' },
+      slug: '',
       aka: { ko: [], en: [] },
       description: { ko: '', en: '' },
       difficulty: 1,
@@ -168,10 +172,15 @@ export default function NewTechniquePage() {
       const isAdmin = session?.user?.role === 'admin';
 
       if (isAdmin) {
+        const customSlug = formData.slug.trim();
         const res = await fetch('/api/techniques', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, status: 'published' }),
+          body: JSON.stringify({
+            ...payload,
+            ...(customSlug && { slug: customSlug }),
+            status: 'published',
+          }),
         });
 
         const data = await res.json();
@@ -342,6 +351,30 @@ export default function NewTechniquePage() {
               onChange={(tags) => setFormData({ ...formData, aka: { ...formData.aka, ko: tags } })}
               placeholder="별칭 입력 후 Enter"
             />
+
+            {/* 관리자에게만: 중복/유사 기술 안내 (저장은 막지 않음) */}
+            <SimilarTechniqueWarning name={formData.name} aka={formData.aka} />
+
+            {session?.user?.role === 'admin' && (
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">슬러그 (선택)</label>
+                <input
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder={slugify(formData.name.en) || '비우면 영문명에서 자동 생성 (영문명이 없으면 임의 ID)'}
+                />
+                {formData.slug.trim() && !isValidSlug(formData.slug.trim().toLowerCase()) ? (
+                  <p className="text-xs text-destructive">
+                    소문자 영문/숫자를 하이픈(-)으로 이은 형태만 가능합니다. (예: triangle-choke)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    URL에 쓰이는 주소입니다. 등록 후에는 바꾸면 기존 링크가 깨지므로 신중히 정하세요.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Classification */}

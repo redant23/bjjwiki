@@ -15,6 +15,7 @@ import { SkillStatusControls } from '@/components/technique/SkillStatusControls'
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 import { getYoutubeEmbedUrl, getFirstYoutubeThumbnail } from '@/lib/youtube';
 import { RoleTagInput } from '@/components/ui/RoleTagInput';
+import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 
@@ -592,6 +593,13 @@ export default function TechniquePage() {
                 tags={editForm.aka.ko}
                 onChange={(tags) => setEditForm({ ...editForm, aka: { ...editForm.aka, ko: tags } })}
                 placeholder="별칭 입력 후 Enter"
+              />
+
+              {/* 관리자에게만: 중복/유사 기술 안내 (저장은 막지 않음) */}
+              <SimilarTechniqueWarning
+                name={editForm.name}
+                aka={editForm.aka}
+                excludeId={technique._id}
               />
 
               {/* Type Selection */}

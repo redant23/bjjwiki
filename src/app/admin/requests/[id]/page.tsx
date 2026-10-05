@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { getChangedFields, getEnteredFields } from '@/lib/technique-request-format';
 import { RequestDiffView } from '@/components/technique-requests/RequestDiffView';
+import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
 
 interface TechniqueRequestDetail {
   _id: string;
@@ -130,6 +131,14 @@ export default function AdminRequestDetailPage() {
           관리자가 이 요청 제출 이후 이 기술을 직접 수정했습니다. 아래 &quot;변경 전&quot; 값은
           최신 상태를 기준으로 합니다.
         </div>
+      )}
+
+      {request.status === 'pending' && (
+        <SimilarTechniqueWarning
+          name={(request.payload.name as { ko?: string; en?: string } | undefined) ?? {}}
+          aka={request.payload.aka as { ko?: string[]; en?: string[] } | undefined}
+          excludeId={target?._id}
+        />
       )}
 
       <RequestDiffView
