@@ -9,6 +9,7 @@ interface LightTechnique {
   slug: string;
   parentId: string | null;
   pathSlugs: string[];
+  primaryRole?: string;
 }
 
 interface TreeNode extends LightTechnique {
@@ -18,7 +19,7 @@ interface TreeNode extends LightTechnique {
 interface TechniqueParentPickerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (technique: { _id: string; name: { ko: string; en?: string }; slug: string; pathSlugs: string[] } | null) => void;
+  onSelect: (technique: { _id: string; name: { ko: string; en?: string }; slug: string; pathSlugs: string[]; primaryRole?: string } | null) => void;
   selectedId?: string | null;
   excludeId?: string;
   excludeSlug?: string;
@@ -144,7 +145,7 @@ export function TechniqueParentPicker({
   }
 
   function handleSelect(t: LightTechnique) {
-    onSelect({ _id: t._id, name: t.name, slug: t.slug, pathSlugs: t.pathSlugs });
+    onSelect({ _id: t._id, name: t.name, slug: t.slug, pathSlugs: t.pathSlugs, primaryRole: t.primaryRole });
     onClose();
   }
 

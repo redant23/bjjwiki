@@ -4,6 +4,7 @@ import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
 import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 import { computePaths, findPathMismatches, wouldCreateCycle } from '@/lib/technique-tree';
+import { normalizeRoleTags } from '@/lib/technique-form';
 
 export const getTechniqueTree = unstable_cache(
   async () => {
@@ -77,7 +78,12 @@ export const EDITABLE_TECHNIQUE_FIELDS = [
   'videos',
   'images',
   'thumbnailUrl',
+  'sweepsFromHere',
+  'submissionsFromHere',
+  'escapesFromHere',
 ] as const;
+
+const LINKED_TECHNIQUE_FIELDS = ['sweepsFromHere', 'submissionsFromHere', 'escapesFromHere'] as const;
 
 export function pickTechniquePayload(body: Record<string, unknown>): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
@@ -131,9 +137,20 @@ export async function createTechniqueFromPayload(
     }
     body.level = (parent.level || 1) + 1;
     body.pathSlugs = [...(parent.pathSlugs || []), parent.slug];
+    // 주 역할을 비워 보내면 상위 기술의 역할을 상속한다.
+    if (!body.primaryRole) {
+      body.primaryRole = parent.primaryRole;
+    }
   } else {
     body.level = 1;
     body.pathSlugs = [];
+  }
+
+  if (!body.primaryRole) {
+    throw new Error('주 역할을 선택해주세요.');
+  }
+  if (Array.isArray(body.roleTags)) {
+    body.roleTags = normalizeRoleTags(body.roleTags);
   }
 
   // 3. Create Technique
@@ -273,6 +290,19 @@ export async function applyTechniqueEdit(
     return null;
   }
 
+  if ('primaryRole' in body && !body.primaryRole) {
+    throw new Error('주 역할은 비울 수 없습니다.');
+  }
+  if (Array.isArray(body.roleTags)) {
+    body.roleTags = normalizeRoleTags(body.roleTags);
+  }
+  // 자기 자신을 연결 기술로 지정할 수 없다.
+  for (const field of LINKED_TECHNIQUE_FIELDS) {
+    if (Array.isArray(body[field])) {
+      body[field] = body[field].filter((linkedId: unknown) => String(linkedId) !== id);
+    }
+  }
+
   // Handle Parent Change
   // undefined = 변경 없음, null/'' = 최상위로 이동. 검증을 모두 마친 뒤에만 childrenIds를 수정한다.
   const oldParentId = currentTechnique.parentId?.toString() ?? null;
@@ -339,6 +369,22 @@ export async function applyTechniqueEdit(
 
   return technique;
 }
+
+// 기존 기술에 쓰인 Role Tag와 사용 횟수 (자동완성/통제용). 트리와 같은 태그로 무효화된다.
+export const getRoleTagCounts = unstable_cache(
+  async () => {
+    await dbConnect();
+    const rows = await Technique.aggregate<{ _id: string; count: number }>([
+      { $unwind: '$roleTags' },
+      { $group: { _id: '$roleTags', count: { $sum: 1 } } },
+      { $sort: { count: -1, _id: 1 } },
+      { $limit: 300 },
+    ]);
+    return rows.map((r) => ({ tag: r._id, count: r.count }));
+  },
+  ['role-tag-counts'],
+  { revalidate: 3600, tags: ['technique-tree'] }
+);
 
 export interface RecentlyUpdatedTechnique {
   _id: string;

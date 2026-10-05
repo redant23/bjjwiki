@@ -28,6 +28,7 @@ export default function NewComboPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [name, setName] = useState('');
   const [chain, setChain] = useState<ChainItem[]>([]);
   const [videoUrl, setVideoUrl] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -130,6 +131,7 @@ export default function NewComboPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: name.trim() || undefined,
           techniques: chain.map((c) => c._id),
           videoUrl: videoUrl.trim() || undefined,
           photoUrl: photoUrl || undefined,
@@ -158,6 +160,18 @@ export default function NewComboPage() {
       <h1 className="text-3xl font-bold mb-6">콤보 등록</h1>
 
       <div className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium mb-2">콤보 이름 (선택)</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={50}
+            placeholder="비워두면 자동으로 이름이 붙습니다 (예: 닉네임 콤보1)"
+            className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+
         <div>
           <label className="block text-sm font-medium mb-2">기술 체인</label>
 
