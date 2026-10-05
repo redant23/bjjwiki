@@ -89,6 +89,13 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+      // 주 역할은 필수. 상위 기술을 지정하면 승인 시 상위 기술의 역할을 상속한다.
+      if (!payload.primaryRole && !payload.parentId) {
+        return NextResponse.json(
+          { success: false, error: '주 역할을 선택해주세요.' },
+          { status: 400 }
+        );
+      }
     }
 
     const techniqueRequest = await TechniqueRequest.create({

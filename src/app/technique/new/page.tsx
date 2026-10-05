@@ -4,12 +4,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronDown, Upload, X } from 'lucide-react';
+import { ChevronLeft, ChevronDown, Upload, X, FileText } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { TagInput } from '@/components/ui/TagInput';
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
+import { RoleTagInput } from '@/components/ui/RoleTagInput';
+import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
+import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
+import { getFirstYoutubeThumbnail } from '@/lib/youtube';
 
 export default function NewTechniquePage() {
   const router = useRouter();
@@ -23,15 +27,23 @@ export default function NewTechniquePage() {
     aka: { ko: [] as string[], en: [] as string[] },
     description: { ko: '', en: '' },
     type: 'both',
-    primaryRole: 'position',
+    primaryRole: '', // 필수. 상위 기술을 고르면 그 기술의 역할로 채워진다.
     difficulty: 1,
     isCorePosition: false,
     positionType: 'neutral',
     parentId: '', // ObjectId
     videoUrls: [''],
     imageUrl: '',
-    roleTags: '', // comma separated
+    roleTags: [] as string[],
+    sweeps: [] as LinkedTechnique[],
+    submissions: [] as LinkedTechnique[],
+    escapes: [] as LinkedTechnique[],
   });
+
+  // 주 역할이 상위 기술에서 자동으로 채워진 값인지 (직접 고르면 false)
+  const [roleInherited, setRoleInherited] = useState(false);
+  const [continuous, setContinuous] = useState(false);
+  const [lastCreated, setLastCreated] = useState<{ name: string; href?: string } | null>(null);
 
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
@@ -77,6 +89,29 @@ export default function NewTechniquePage() {
     setPreviewUrl('');
   };
 
+  // 연속 등록: 상위 기술/유형/주 역할은 유지하고 나머지를 비운다.
+  const resetForNext = () => {
+    setFormData((prev) => ({
+      ...prev,
+      name: { ko: '', en: '' },
+      aka: { ko: [], en: [] },
+      description: { ko: '', en: '' },
+      difficulty: 1,
+      videoUrls: [''],
+      imageUrl: '',
+      roleTags: [],
+      sweeps: [],
+      submissions: [],
+      escapes: [],
+    }));
+    setThumbnailFile(null);
+    setPreviewUrl('');
+    setError('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const autoThumbnail = previewUrl ? null : getFirstYoutubeThumbnail(formData.videoUrls);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -105,6 +140,9 @@ export default function NewTechniquePage() {
         }
       }
 
+      // 직접 올린 이미지가 없으면 첫 유튜브 영상의 썸네일을 쓴다.
+      finalImageUrl = finalImageUrl || getFirstYoutubeThumbnail(formData.videoUrls) || '';
+
       const payload = {
         name: formData.name,
         aka: {
@@ -114,7 +152,10 @@ export default function NewTechniquePage() {
         description: formData.description,
         type: formData.type,
         primaryRole: formData.primaryRole,
-        roleTags: formData.roleTags.split(',').map(s => s.trim()).filter(Boolean),
+        roleTags: formData.roleTags,
+        sweepsFromHere: formData.sweeps.map((t) => t._id),
+        submissionsFromHere: formData.submissions.map((t) => t._id),
+        escapesFromHere: formData.escapes.map((t) => t._id),
         difficulty: Number(formData.difficulty),
         isCorePosition: formData.isCorePosition,
         positionType: formData.positionType,
@@ -137,6 +178,12 @@ export default function NewTechniquePage() {
         if (data.success) {
           const slug = data.data.slug;
           const path = [...(data.data.pathSlugs || []), slug].join('/');
+          if (continuous) {
+            resetForNext();
+            setLastCreated({ name: data.data.name.ko, href: `/technique/${path}` });
+            router.refresh();
+            return;
+          }
           // Order matters: refresh() before push() gets discarded outright —
           // Next.js's router cancels a pending refresh as soon as a navigate
           // is dispatched. push() first, then refresh() queues the refresh to
@@ -156,6 +203,11 @@ export default function NewTechniquePage() {
 
         const data = await res.json();
         if (data.success) {
+          if (continuous) {
+            resetForNext();
+            setLastCreated({ name: formData.name.ko });
+            return;
+          }
           alert('등록 요청이 접수되었습니다. 관리자 확인 후 게시됩니다.');
           router.push('/profile');
         } else {
@@ -194,6 +246,20 @@ export default function NewTechniquePage() {
           </div>
         )}
 
+        {lastCreated && (
+          <div className="p-4 bg-primary/10 rounded-md text-sm">
+            {session?.user?.role === 'admin' ? '등록했습니다' : '등록 요청을 접수했습니다'}:{' '}
+            {lastCreated.href ? (
+              <Link href={lastCreated.href} className="font-medium underline">
+                {lastCreated.name}
+              </Link>
+            ) : (
+              <span className="font-medium">{lastCreated.name}</span>
+            )}
+            . 이어서 다음 기술을 등록하세요.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Thumbnail Image - Moved to top */}
           <div className="space-y-4 p-4 border rounded-lg bg-muted/20">
@@ -211,9 +277,15 @@ export default function NewTechniquePage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center justify-center w-40 aspect-video rounded-md border border-dashed border-input bg-muted/50">
-                  <span className="text-xs text-muted-foreground">이미지 없음</span>
-                </div>
+                autoThumbnail ? (
+                  <div className="w-40 aspect-video rounded-md overflow-hidden border border-border">
+                    <img src={autoThumbnail} alt="영상 썸네일" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center w-40 aspect-video rounded-md border border-dashed border-input bg-muted/50">
+                    <span className="text-xs text-muted-foreground">이미지 없음</span>
+                  </div>
+                )
               )}
               <div className="flex-1">
                 <label
@@ -232,6 +304,7 @@ export default function NewTechniquePage() {
                 />
                 <p className="text-xs text-muted-foreground mt-2">
                   최대 1MB, 자동 압축됨.
+                  {autoThumbnail && ' 업로드하지 않으면 유튜브 영상 썸네일이 사용됩니다.'}
                 </p>
               </div>
             </div>
@@ -288,38 +361,33 @@ export default function NewTechniquePage() {
                 </select>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium">주 역할</label>
+                <label className="text-sm font-medium">
+                  주 역할 <span className="text-destructive">*</span>
+                  {roleInherited && formData.primaryRole && (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">상위 기술에서 상속됨</span>
+                  )}
+                </label>
                 <select
+                  required
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   value={formData.primaryRole}
-                  onChange={e => setFormData({ ...formData, primaryRole: e.target.value })}
+                  onChange={e => {
+                    setRoleInherited(false);
+                    setFormData({ ...formData, primaryRole: e.target.value });
+                  }}
                 >
-                  <option value="position">포지션</option>
-                  <option value="guard">가드</option>
-                  <option value="submission">서브미션</option>
-                  <option value="sweep">스윕</option>
-                  <option value="escape">이스케이프</option>
-                  <option value="guard_pass">가드 패스</option>
-                  <option value="drill">드릴</option>
-                  <option value="transition">트랜지션</option>
-                  <option value="guard_recovery">가드 리커버리</option>
-                  <option value="leg_entry">레그 엔트리</option>
-                  <option value="control_hold">컨트롤/홀드</option>
-                  <option value="grip">그립</option>
-                  <option value="takedown">테이크다운</option>
+                  <option value="" disabled>선택하세요</option>
+                  {PRIMARY_ROLE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Role Tags (쉼표로 구분)</label>
-              <input
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.roleTags}
-                onChange={e => setFormData({ ...formData, roleTags: e.target.value })}
-                placeholder="예: backtake, inversion, framing"
-              />
-            </div>
+            <RoleTagInput
+              tags={formData.roleTags}
+              onChange={(roleTags) => setFormData({ ...formData, roleTags })}
+            />
 
             <div className="grid gap-2">
               <label className="text-sm font-medium">상위 기술 (선택)</label>
@@ -340,6 +408,14 @@ export default function NewTechniquePage() {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">내용</h3>
             <div className="grid gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, description: { ...formData.description, ko: insertDescriptionTemplate(formData.description.ko) } })}
+                className="inline-flex w-fit items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                <FileText className="h-4 w-4" />
+                설명 템플릿 삽입 (개요/진입/핵심 포인트/흔한 실수/관련·유사 기술)
+              </button>
               <MarkdownEditor
                 label="설명 (마크다운 지원)"
                 value={formData.description.ko}
@@ -348,11 +424,39 @@ export default function NewTechniquePage() {
               />
             </div>
 
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-muted-foreground">이 기술에서 이어지는 기술 (선택)</h3>
+              <LinkedTechniquesInput
+                label="스윕"
+                items={formData.sweeps}
+                onChange={(sweeps) => setFormData({ ...formData, sweeps })}
+              />
+              <LinkedTechniquesInput
+                label="서브미션"
+                items={formData.submissions}
+                onChange={(submissions) => setFormData({ ...formData, submissions })}
+              />
+              <LinkedTechniquesInput
+                label="이스케이프"
+                items={formData.escapes}
+                onChange={(escapes) => setFormData({ ...formData, escapes })}
+              />
+            </div>
+
             <VideoUrlInput
               urls={formData.videoUrls}
               onChange={(urls) => setFormData({ ...formData, videoUrls: urls })}
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={continuous}
+              onChange={(e) => setContinuous(e.target.checked)}
+            />
+            등록 후 이어서 다음 기술 등록 (상위 기술·유형·주 역할 유지)
+          </label>
 
           <button
             type="submit"
@@ -369,7 +473,16 @@ export default function NewTechniquePage() {
         onClose={() => setParentPickerOpen(false)}
         selectedId={formData.parentId || null}
         onSelect={(technique) => {
-          setFormData({ ...formData, parentId: technique?._id || '' });
+          // 주 역할을 직접 고르지 않았다면 상위 기술의 역할을 상속한다.
+          let primaryRole = formData.primaryRole;
+          if (technique?.primaryRole && (!primaryRole || roleInherited)) {
+            primaryRole = technique.primaryRole;
+            setRoleInherited(true);
+          } else if (!technique && roleInherited) {
+            primaryRole = '';
+            setRoleInherited(false);
+          }
+          setFormData({ ...formData, parentId: technique?._id || '', primaryRole });
           setParentName(technique?.name.ko || '');
         }}
       />

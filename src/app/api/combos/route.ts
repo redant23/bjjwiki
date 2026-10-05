@@ -84,9 +84,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const comboCount = await Combo.countDocuments({ createdBy: session.user.id });
-    const nickname = session.user.name || '유저';
-    const name = `${nickname} 콤보${comboCount + 1}`;
+    // 이름을 직접 입력하면 그대로 쓰고, 비우면 "{닉네임} 콤보N"으로 자동 생성한다.
+    const customName = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
+    let name = customName;
+    if (!name) {
+      const comboCount = await Combo.countDocuments({ createdBy: session.user.id });
+      const nickname = session.user.name || '유저';
+      name = `${nickname} 콤보${comboCount + 1}`;
+    }
 
     const combo = await Combo.create({
       name,
