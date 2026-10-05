@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
 import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
+import { computePaths, findPathMismatches, wouldCreateCycle } from '@/lib/technique-tree';
 
 export const getTechniqueTree = unstable_cache(
   async () => {
@@ -204,6 +205,60 @@ function stripIds(value: unknown): unknown {
   return value;
 }
 
+async function loadTreeNodes() {
+  const docs = await Technique.find().select('_id slug parentId pathSlugs level').lean();
+  return docs.map((d) => ({
+    _id: d._id.toString(),
+    slug: d.slug as string,
+    parentId: d.parentId ? d.parentId.toString() : null,
+    pathSlugs: (d.pathSlugs ?? []) as string[],
+    level: (d.level ?? 1) as number,
+  }));
+}
+
+export interface RebuildPathsResult {
+  checked: number;
+  mismatched: number;
+  updated: number;
+  // 부모 체인이 순환이라 루트에서 닿지 않는 기술 (자동 복구 불가, 수동 확인 필요)
+  unreachable: string[];
+  samples: Array<{ slug: string; stored: { pathSlugs: string[]; level: number }; expected: { pathSlugs: string[]; level: number } }>;
+}
+
+/**
+ * parentId 기준으로 pathSlugs/level을 다시 계산해 어긋난 문서만 갱신한다.
+ * rootIds를 주면 해당 기술과 그 하위 트리만, 생략하면 전체를 대상으로 한다.
+ * contentUpdatedAt/updatedAt은 건드리지 않는다 (콘텐츠 수정이 아니므로).
+ */
+export async function rebuildTechniquePaths(
+  options: { rootIds?: string[]; dryRun?: boolean } = {}
+): Promise<RebuildPathsResult> {
+  await dbConnect();
+  const nodes = await loadTreeNodes();
+  const expected = computePaths(nodes, options.rootIds);
+  const mismatches = findPathMismatches(nodes, expected);
+
+  if (!options.dryRun && mismatches.length > 0) {
+    await Technique.bulkWrite(
+      mismatches.map((m) => ({
+        updateOne: {
+          filter: { _id: m._id },
+          update: { $set: { pathSlugs: m.expected.pathSlugs, level: m.expected.level } },
+        },
+      })),
+      { timestamps: false }
+    );
+  }
+
+  return {
+    checked: expected.size,
+    mismatched: mismatches.length,
+    updated: options.dryRun ? 0 : mismatches.length,
+    unreachable: options.rootIds ? [] : nodes.filter((n) => !expected.has(n._id)).map((n) => n.slug),
+    samples: mismatches.slice(0, 20).map((m) => ({ slug: m.slug, stored: m.stored, expected: m.expected })),
+  };
+}
+
 export async function applyTechniqueEdit(
   id: string,
   payload: Record<string, unknown>,
@@ -219,27 +274,33 @@ export async function applyTechniqueEdit(
   }
 
   // Handle Parent Change
-  if (body.parentId && body.parentId !== currentTechnique.parentId?.toString()) {
-    if (currentTechnique.parentId) {
-      await Technique.findByIdAndUpdate(currentTechnique.parentId, {
-        $pull: { childrenIds: id },
-      });
+  // undefined = 변경 없음, null/'' = 최상위로 이동. 검증을 모두 마친 뒤에만 childrenIds를 수정한다.
+  const oldParentId = currentTechnique.parentId?.toString() ?? null;
+  const requestedParentId: string | null | undefined =
+    body.parentId === undefined ? undefined : body.parentId || null;
+  const parentChanged = requestedParentId !== undefined && requestedParentId !== oldParentId;
+
+  if (requestedParentId !== undefined) {
+    body.parentId = requestedParentId;
+  }
+
+  if (parentChanged) {
+    if (requestedParentId) {
+      const newParent = await Technique.findById(requestedParentId).select('_id');
+      if (!newParent) {
+        throw new Error('Parent technique not found');
+      }
+      if (wouldCreateCycle(await loadTreeNodes(), id, requestedParentId)) {
+        throw new Error('Cannot set the technique itself or its descendant as its parent');
+      }
     }
 
-    const newParent = await Technique.findById(body.parentId);
-    if (newParent) {
-      await Technique.findByIdAndUpdate(body.parentId, {
-        $push: { childrenIds: id },
-      });
-      body.level = (newParent.level || 1) + 1;
-      body.pathSlugs = [...(newParent.pathSlugs || []), newParent.slug];
+    if (oldParentId) {
+      await Technique.findByIdAndUpdate(oldParentId, { $pull: { childrenIds: id } });
     }
-  } else if (body.parentId === null && currentTechnique.parentId) {
-    await Technique.findByIdAndUpdate(currentTechnique.parentId, {
-      $pull: { childrenIds: id },
-    });
-    body.level = 1;
-    body.pathSlugs = [];
+    if (requestedParentId) {
+      await Technique.findByIdAndUpdate(requestedParentId, { $addToSet: { childrenIds: id } });
+    }
   }
 
   const rawUpdate = buildTechniqueUpdateSet(body);
@@ -269,6 +330,12 @@ export async function applyTechniqueEdit(
     { $set: update },
     { new: true, runValidators: true }
   );
+
+  // 부모나 slug가 바뀌면 이 기술뿐 아니라 모든 하위 기술의 pathSlugs/level이 달라진다.
+  if (parentChanged || 'slug' in update) {
+    await rebuildTechniquePaths({ rootIds: [id] });
+    return Technique.findById(id);
+  }
 
   return technique;
 }
