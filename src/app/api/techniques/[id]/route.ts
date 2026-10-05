@@ -4,7 +4,7 @@ import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import User from '@/models/User';
 import { requireAdmin } from '@/lib/auth';
-import { applyTechniqueEdit } from '@/lib/technique-service';
+import { applyTechniqueEdit, rebuildTechniquePaths } from '@/lib/technique-service';
 
 export async function GET(
   request: Request,
@@ -101,11 +101,16 @@ export async function DELETE(
     if (technique.childrenIds && technique.childrenIds.length > 0) {
       await Technique.updateMany(
         { _id: { $in: technique.childrenIds } },
-        { $set: { parentId: null, level: 1, pathSlugs: [] } }
+        { $set: { parentId: null } }
       );
     }
 
     await technique.deleteOne();
+
+    // 고아가 된 자식들의 하위 트리 전체 pathSlugs/level을 다시 계산
+    if (technique.childrenIds && technique.childrenIds.length > 0) {
+      await rebuildTechniquePaths({ rootIds: technique.childrenIds.map(String) });
+    }
 
     // Deleting a technique otherwise leaves it as an orphaned ref inside
     // every user's mySkills — invisible on read (filtered out), but still

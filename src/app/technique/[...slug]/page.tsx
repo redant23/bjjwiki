@@ -100,6 +100,9 @@ export default function TechniquePage() {
           if (detailData.success) {
             setTechnique(detailData.data);
 
+            // 조회수 집계 (실패해도 페이지 표시에는 영향 없음)
+            fetch(`/api/techniques/${tech._id}/view`, { method: 'POST' }).catch(() => {});
+
             // Fetch breadcrumb path (parent techniques)
             if (detailData.data.pathSlugs && detailData.data.pathSlugs.length > 0) {
               const pathPromises = detailData.data.pathSlugs.map(async (slug: string) => {
@@ -287,7 +290,7 @@ export default function TechniquePage() {
         },
         aka: {
           ko: editForm.aka.ko,
-          en: editForm.aka.en.length > 0 ? editForm.aka.en : undefined,
+          en: editForm.aka.en,
         },
         type: editForm.type,
         primaryRole: editForm.primaryRole,
