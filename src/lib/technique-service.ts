@@ -5,6 +5,13 @@ import { unstable_cache } from 'next/cache';
 import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 import { computePaths, findPathMismatches, wouldCreateCycle } from '@/lib/technique-tree';
 import { normalizeRoleTags } from '@/lib/technique-form';
+import {
+  findSimilarTechniques,
+  normalizeAliasList,
+  normalizeDisplayText,
+  SimilarityInput,
+} from '@/lib/technique-similarity';
+import { isValidSlug, slugify } from '@/lib/technique-slug';
 
 export const getTechniqueTree = unstable_cache(
   async () => {
@@ -95,14 +102,70 @@ export function pickTechniquePayload(body: Record<string, unknown>): Record<stri
   return picked;
 }
 
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')     // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-');  // Replace multiple - with single -
+/**
+ * 이름/별칭 표기를 정리한다: 유니코드 정규화, 공백 정리, 별칭의 빈 값/중복/이름과 같은 값 제거.
+ * body에 들어 있는 필드만 처리한다 (부분 수정 payload 지원).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeNamesInPlace(body: any, currentNames?: { ko?: string; en?: string }) {
+  if (body.name && typeof body.name === 'object') {
+    for (const lang of ['ko', 'en'] as const) {
+      if (typeof body.name[lang] === 'string') {
+        body.name[lang] = normalizeDisplayText(body.name[lang]);
+      }
+    }
+  }
+  if (body.aka && typeof body.aka === 'object') {
+    const ownNames = [
+      body.name?.ko ?? currentNames?.ko,
+      body.name?.en ?? currentNames?.en,
+    ];
+    for (const lang of ['ko', 'en'] as const) {
+      if (Array.isArray(body.aka[lang])) {
+        body.aka[lang] = normalizeAliasList(body.aka[lang], ownNames);
+      }
+    }
+  }
+}
+
+async function assertSlugAvailable(slug: string, selfId?: string) {
+  if (!isValidSlug(slug)) {
+    throw new Error('슬러그는 소문자 영문/숫자를 하이픈(-)으로 이은 형태여야 합니다. (예: triangle-choke)');
+  }
+  const existing = await Technique.findOne({ slug }).select('_id');
+  if (existing && existing._id.toString() !== selfId) {
+    throw new Error('이미 사용 중인 슬러그입니다.');
+  }
+}
+
+export interface SimilarTechniqueResult {
+  _id: string;
+  name: string;
+  href: string;
+  reason: 'same_name' | 'alias' | 'similar';
+  matched: string;
+}
+
+/** 이름/별칭이 기존 기술과 같거나 비슷한 기술을 찾는다 (관리자 경고용). */
+export async function findSimilarTechniquesInDb(
+  input: SimilarityInput,
+  excludeId?: string
+): Promise<SimilarTechniqueResult[]> {
+  await dbConnect();
+  const docs = await Technique.find().select('name aka slug pathSlugs').lean();
+  const candidates = docs.map((d) => ({
+    _id: d._id.toString(),
+    name: { ko: d.name.ko as string, en: d.name.en as string | undefined },
+    aka: { ko: (d.aka?.ko ?? []) as string[], en: (d.aka?.en ?? []) as string[] },
+    href: `/technique/${[...(d.pathSlugs || []), d.slug].join('/')}`,
+  }));
+  return findSimilarTechniques(input, candidates, { excludeId }).map((m) => ({
+    _id: m.candidate._id,
+    name: m.candidate.name.ko,
+    href: m.candidate.href,
+    reason: m.reason,
+    matched: m.matched,
+  }));
 }
 
 export async function createTechniqueFromPayload(
@@ -113,8 +176,13 @@ export async function createTechniqueFromPayload(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const body: any = { ...payload };
 
+  normalizeNamesInPlace(body);
+
   // 1. Generate Slug if not provided
-  if (!body.slug) {
+  if (body.slug) {
+    body.slug = String(body.slug).trim().toLowerCase();
+    await assertSlugAvailable(body.slug);
+  } else {
     const nameForSlug = body.name?.en || body.name?.ko || 'untitled';
     // Non-Latin names (e.g. Hangul-only) are stripped to '' by slugify,
     // which would fail the required `slug` field — fall back to a generated id.
@@ -290,6 +358,16 @@ export async function applyTechniqueEdit(
     return null;
   }
 
+  normalizeNamesInPlace(body, {
+    ko: currentTechnique.get('name.ko'),
+    en: currentTechnique.get('name.en'),
+  });
+  if ('slug' in body) {
+    body.slug = String(body.slug ?? '').trim().toLowerCase();
+    if (body.slug !== currentTechnique.slug) {
+      await assertSlugAvailable(body.slug, id);
+    }
+  }
   if ('primaryRole' in body && !body.primaryRole) {
     throw new Error('주 역할은 비울 수 없습니다.');
   }
