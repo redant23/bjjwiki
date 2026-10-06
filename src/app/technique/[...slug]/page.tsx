@@ -16,6 +16,7 @@ import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 import { getYoutubeEmbedUrl, getFirstYoutubeThumbnail } from '@/lib/youtube';
 import { RoleTagInput } from '@/components/ui/RoleTagInput';
 import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
+import { TechniqueRelatedSections } from '@/components/technique/TechniqueRelatedSections';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 
@@ -31,9 +32,11 @@ interface Technique {
   pathSlugs: string[];
   parentId?: { _id: string; name: { ko: string }; slug: string };
   childrenIds?: { _id: string; name: { ko: string }; slug: string; type: string; primaryRole: string }[];
-  sweepsFromHere?: { _id: string; name: { ko: string }; slug: string }[];
-  submissionsFromHere?: { _id: string; name: { ko: string }; slug: string }[];
-  escapesFromHere?: { _id: string; name: { ko: string }; slug: string }[];
+  sweepsFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
+  submissionsFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
+  escapesFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
+  difficulty?: number;
+  positionType?: 'top' | 'bottom' | 'neutral';
   videos: { url: string }[];
   images: { url: string; captionKo?: string; captionEn?: string }[];
   thumbnailUrl?: string;
@@ -43,6 +46,9 @@ interface Technique {
   createdBy?: { nickname: string } | null;
   lastEditedBy?: { nickname: string } | null;
 }
+
+// 탑/바텀 배지: 중립은 정보가 없는 것과 같아 표시하지 않는다.
+const POSITION_TYPE_LABELS: Record<string, string> = { top: '탑', bottom: '바텀' };
 
 function toLinked(items?: { _id: string; name: { ko: string } }[]): LinkedTechnique[] {
   return (items || []).map((t) => ({ _id: t._id, name: { ko: t.name.ko } }));
@@ -79,6 +85,8 @@ export default function TechniquePage() {
     type: 'both' as 'gi' | 'nogi' | 'both',
     primaryRole: 'position' as string,
     roleTags: [] as string[],
+    difficulty: 1,
+    positionType: '' as '' | 'top' | 'bottom' | 'neutral',
     sweeps: [] as LinkedTechnique[],
     submissions: [] as LinkedTechnique[],
     escapes: [] as LinkedTechnique[],
@@ -149,6 +157,8 @@ export default function TechniquePage() {
               type: detailData.data.type || 'both',
               primaryRole: detailData.data.primaryRole || 'position',
               roleTags: detailData.data.roleTags || [],
+              difficulty: detailData.data.difficulty || 1,
+              positionType: detailData.data.positionType || '',
               sweeps: toLinked(detailData.data.sweepsFromHere),
               submissions: toLinked(detailData.data.submissionsFromHere),
               escapes: toLinked(detailData.data.escapesFromHere),
@@ -199,6 +209,8 @@ export default function TechniquePage() {
       type: technique.type as 'gi' | 'nogi' | 'both',
       primaryRole: technique.primaryRole || 'position',
       roleTags: technique.roleTags || [],
+      difficulty: technique.difficulty || 1,
+      positionType: technique.positionType || '',
       sweeps: toLinked(technique.sweepsFromHere),
       submissions: toLinked(technique.submissionsFromHere),
       escapes: toLinked(technique.escapesFromHere),
@@ -320,6 +332,9 @@ export default function TechniquePage() {
         type: editForm.type,
         primaryRole: editForm.primaryRole,
         roleTags: editForm.roleTags,
+        difficulty: editForm.difficulty,
+        // 미지정('')이면 보내지 않아 기존 값을 건드리지 않는다.
+        ...(editForm.positionType && { positionType: editForm.positionType }),
         sweepsFromHere: editForm.sweeps.map((t) => t._id),
         submissionsFromHere: editForm.submissions.map((t) => t._id),
         escapesFromHere: editForm.escapes.map((t) => t._id),
@@ -362,6 +377,8 @@ export default function TechniquePage() {
               type: detailData.data.type || 'both',
               primaryRole: detailData.data.primaryRole || 'position',
               roleTags: detailData.data.roleTags || [],
+              difficulty: detailData.data.difficulty || 1,
+              positionType: detailData.data.positionType || '',
               sweeps: toLinked(detailData.data.sweepsFromHere),
               submissions: toLinked(detailData.data.submissionsFromHere),
               escapes: toLinked(detailData.data.escapesFromHere),
@@ -453,6 +470,11 @@ export default function TechniquePage() {
     };
     return map[type] || type;
   };
+
+  const hasVideo = !!technique.videos && technique.videos.length > 0;
+  // 영상이 있으면 영상 플레이어가 곧 대표 이미지이므로, 유튜브에서 자동으로 만든 썸네일은 숨기고
+  // 직접 올린 이미지는 작게 보여준다.
+  const showHeaderThumbnail = !(hasVideo && technique.thumbnailUrl?.includes('img.youtube.com'));
 
   const canEdit = !!session;
   const isAdmin = session?.user?.role === 'admin';
@@ -652,6 +674,34 @@ export default function TechniquePage() {
                 onChange={(roleTags) => setEditForm({ ...editForm, roleTags })}
               />
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">난이도 (1~10)</label>
+                  <select
+                    value={editForm.difficulty}
+                    onChange={(e) => setEditForm({ ...editForm, difficulty: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">탑/바텀</label>
+                  <select
+                    value={editForm.positionType}
+                    onChange={(e) => setEditForm({ ...editForm, positionType: e.target.value as typeof editForm.positionType })}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">미지정</option>
+                    <option value="top">탑</option>
+                    <option value="bottom">바텀</option>
+                    <option value="neutral">중립</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="grid gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">상위 기술 (Parent)</label>
@@ -671,8 +721,12 @@ export default function TechniquePage() {
           ) : (
             <div className="flex flex-col md:flex-row gap-6 items-start">
               {/* Thumbnail - Left side */}
-              {technique.thumbnailUrl && (
-                <div className="w-full md:w-[200px] flex-shrink-0 aspect-square rounded-lg overflow-hidden border border-border bg-muted/50">
+              {showHeaderThumbnail && technique.thumbnailUrl && (
+                <div
+                  className={`flex-shrink-0 aspect-square rounded-lg overflow-hidden border border-border bg-muted/50 ${
+                    hasVideo ? 'w-24' : 'w-full md:w-[200px]'
+                  }`}
+                >
                   <img
                     src={technique.thumbnailUrl}
                     alt={technique.name.ko}
@@ -703,6 +757,24 @@ export default function TechniquePage() {
                   <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground capitalize">
                     {translateType(technique.type)}
                   </span>
+                  {technique.positionType && POSITION_TYPE_LABELS[technique.positionType] && (
+                    <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground">
+                      {POSITION_TYPE_LABELS[technique.positionType]}
+                    </span>
+                  )}
+                  {(technique.difficulty ?? 1) > 1 && (
+                    <span className="inline-flex items-center rounded-full border border-border px-3 py-1 text-sm font-medium">
+                      난이도 {technique.difficulty}/10
+                    </span>
+                  )}
+                  {technique.roleTags?.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center rounded-full border border-dashed border-border px-3 py-1 text-sm text-muted-foreground"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -824,6 +896,15 @@ export default function TechniquePage() {
               ))}
             </div>
           </section>
+        )}
+
+        {!isEditing && (
+          <TechniqueRelatedSections
+            techniqueId={technique._id}
+            sweeps={technique.sweepsFromHere}
+            submissions={technique.submissionsFromHere}
+            escapes={technique.escapesFromHere}
+          />
         )}
 
         <footer className="pt-6 text-sm text-muted-foreground border-t border-border space-y-1">

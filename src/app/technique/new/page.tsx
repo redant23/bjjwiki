@@ -33,7 +33,7 @@ export default function NewTechniquePage() {
     primaryRole: '', // 필수. 상위 기술을 고르면 그 기술의 역할로 채워진다.
     difficulty: 1,
     isCorePosition: false,
-    positionType: 'neutral',
+    positionType: '' as '' | 'top' | 'bottom' | 'neutral', // 미지정이면 저장하지 않음
     parentId: '', // ObjectId
     videoUrls: [''],
     imageUrl: '',
@@ -162,7 +162,7 @@ export default function NewTechniquePage() {
         escapesFromHere: formData.escapes.map((t) => t._id),
         difficulty: Number(formData.difficulty),
         isCorePosition: formData.isCorePosition,
-        positionType: formData.positionType,
+        ...(formData.positionType && { positionType: formData.positionType }),
         parentId: formData.parentId || null,
         videos: formData.videoUrls.filter(url => url.trim()).map(url => ({ url })),
         images: finalImageUrl ? [{ url: finalImageUrl, isPrimary: true }] : [],
@@ -421,6 +421,34 @@ export default function NewTechniquePage() {
               tags={formData.roleTags}
               onChange={(roleTags) => setFormData({ ...formData, roleTags })}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">난이도 (1~10)</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.difficulty}
+                  onChange={e => setFormData({ ...formData, difficulty: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">탑/바텀</label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.positionType}
+                  onChange={e => setFormData({ ...formData, positionType: e.target.value as typeof formData.positionType })}
+                >
+                  <option value="">미지정</option>
+                  <option value="top">탑</option>
+                  <option value="bottom">바텀</option>
+                  <option value="neutral">중립</option>
+                </select>
+              </div>
+            </div>
 
             <div className="grid gap-2">
               <label className="text-sm font-medium">상위 기술 (선택)</label>
