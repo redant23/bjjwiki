@@ -19,7 +19,15 @@ interface RelatedTechnique {
   thumbnailUrl: string | null;
 }
 
+interface FollowingItem {
+  _id: string;
+  name: string;
+  href: string;
+  count: number;
+}
+
 interface RelatedData {
+  following: FollowingItem[];
   prev: RelatedTechnique | null;
   next: RelatedTechnique | null;
   combos: Array<{ _id: string; name: string; length: number; saveCount: number }>;
@@ -29,20 +37,14 @@ interface TechniqueRelatedSectionsProps {
   techniqueId: string;
   // 작성자가 제목을 짓고 기술을 골라 넣은 연결 목록
   groups?: Array<{ title: string; techniques: LinkedItem[] }>;
-  sweeps?: LinkedItem[];
-  submissions?: LinkedItem[];
-  escapes?: LinkedItem[];
 }
 
 const hrefOf = (t: LinkedItem) => `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
 
-// 상세 페이지 하단: 이어지는 기술 / 작성자가 만든 제목별 연결 목록 / 포함된 콤보 / 이전·다음 형제.
+// 상세 페이지 하단: 콤보 기반 이어지는 기술 / 작성자가 만든 제목별 연결 목록 / 포함된 콤보 / 이전·다음 형제.
 export function TechniqueRelatedSections({
   techniqueId,
   groups = [],
-  sweeps = [],
-  submissions = [],
-  escapes = [],
 }: TechniqueRelatedSectionsProps) {
   // 어느 기술의 데이터인지 함께 저장해, 다른 기술로 이동했을 때 이전 기술의 목록이 잠깐 보이지 않게 한다.
   const [loaded, setLoaded] = useState<{ id: string; data: RelatedData } | null>(null);
@@ -63,31 +65,22 @@ export function TechniqueRelatedSections({
     };
   }, [techniqueId]);
 
-  const linkedGroups = [
-    { label: '스윕', items: sweeps },
-    { label: '서브미션', items: submissions },
-    { label: '이스케이프', items: escapes },
-  ].filter((g) => g.items.length > 0);
-
   return (
     <>
-      {linkedGroups.length > 0 && (
+      {related && related.following.length > 0 && (
         <section className="pt-6 border-t border-border">
-          <h2 className="text-2xl font-semibold mb-4">여기서 이어지는 기술</h2>
-          <div className="space-y-3">
-            {linkedGroups.map((group) => (
-              <div key={group.label} className="flex flex-wrap items-center gap-2">
-                <span className="w-20 shrink-0 text-sm font-medium text-muted-foreground">{group.label}</span>
-                {group.items.map((item) => (
-                  <Link
-                    key={item._id}
-                    href={hrefOf(item)}
-                    className="rounded-full border border-border px-3 py-1 text-sm hover:bg-accent hover:border-primary/50 transition-colors"
-                  >
-                    {item.name.ko}
-                  </Link>
-                ))}
-              </div>
+          <h2 className="text-2xl font-semibold">여기서 이어지는 기술</h2>
+          <p className="mb-4 text-sm text-muted-foreground">콤보에 등록된 연결을 기준으로 보여줍니다.</p>
+          <div className="flex flex-wrap gap-2">
+            {related.following.map((item) => (
+              <Link
+                key={item._id}
+                href={item.href}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm hover:bg-accent hover:border-primary/50 transition-colors"
+              >
+                {item.name}
+                <span className="text-xs text-muted-foreground">콤보 {item.count}</span>
+              </Link>
             ))}
           </div>
         </section>
