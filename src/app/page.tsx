@@ -6,11 +6,15 @@ import { authOptions } from "@/lib/auth";
 import { LogoWordmark } from "@/components/brand/Logo";
 import { TechniqueCounter } from "@/components/home/TechniqueCounter";
 import { getPublishedTechniqueCount } from "@/lib/technique-service";
+import { getHomeData } from "@/lib/home-service";
+import { kstDateKey } from "@/lib/home-picks";
+import { HomeSections } from "@/components/home/HomeSections";
 
 export default async function Home() {
-  const [session, techniqueCount] = await Promise.all([
+  const [session, techniqueCount, homeData] = await Promise.all([
     getServerSession(authOptions),
     getPublishedTechniqueCount(),
+    getHomeData(kstDateKey()),
   ]);
   const isAdmin = session?.user?.role === "admin";
   const showRegisterCta = !session || isAdmin;
@@ -73,6 +77,9 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* 오늘의 기술 / 최근 추가 / 카테고리 바로가기 / 인기 콤보 */}
+      <HomeSections data={homeData} />
 
       {/* Features Grid */}
       <section className="w-full py-12 md:py-24 lg:py-32 border-t border-border">

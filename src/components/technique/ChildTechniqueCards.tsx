@@ -2,22 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import {
-  ArrowDownToLine,
-  DoorOpen,
-  Dumbbell,
-  Folder,
-  Footprints,
-  Layers,
-  Lock,
-  RefreshCw,
-  Shield,
-  Shuffle,
-  Video,
-  type LucideIcon,
-} from 'lucide-react';
+import { Video, type LucideIcon } from 'lucide-react';
 import { ROLE_LABELS, TYPE_LABELS } from '@/lib/technique-request-format';
-import { categoryIconKey, groupCardsByRole, type CategoryIconKey } from '@/lib/technique-cards';
+import { categoryIconKey, groupCardsByRole } from '@/lib/technique-cards';
+import { CATEGORY_ICONS } from '@/components/technique/category-icons';
 
 interface Card {
   _id: string;
@@ -45,19 +33,6 @@ interface ChildTechniqueCardsProps {
   basePath: string[]; // 부모의 [...pathSlugs, slug]
   basicChildren: BasicChild[];
 }
-
-const ICONS: Record<CategoryIconKey, LucideIcon> = {
-  standing: ArrowDownToLine,
-  guard: Shield,
-  pass: Footprints,
-  position: Layers,
-  submission: Lock,
-  escape: DoorOpen,
-  drill: Dumbbell,
-  transition: Shuffle,
-  sweep: RefreshCw,
-  other: Folder,
-};
 
 function CardLink({ card, Icon }: { card: Card; Icon: LucideIcon }) {
   return (
@@ -123,7 +98,7 @@ export function ChildTechniqueCards({ techniqueId, basePath, basicChildren }: Ch
       childCount: 0,
       hasVideo: false,
     }));
-  const Icon = ICONS[categoryIconKey(data?.rootName)];
+  const Icon = CATEGORY_ICONS[categoryIconKey(data?.rootName)];
   const groups = groupCardsByRole(cards);
 
   return (
