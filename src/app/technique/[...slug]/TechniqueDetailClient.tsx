@@ -18,7 +18,6 @@ import { RoleTagInput } from '@/components/ui/RoleTagInput';
 import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
 import { TechniqueRelatedSections } from '@/components/technique/TechniqueRelatedSections';
 import { ChildTechniqueCards } from '@/components/technique/ChildTechniqueCards';
-import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import {
   RelatedGroupsEditor,
   toEditableGroups,
@@ -39,9 +38,6 @@ interface Technique {
   pathSlugs: string[];
   parentId?: { _id: string; name: { ko: string }; slug: string };
   childrenIds?: { _id: string; name: { ko: string }; slug: string; type: string; primaryRole: string }[];
-  sweepsFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
-  submissionsFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
-  escapesFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
   difficulty?: number;
   positionType?: 'top' | 'bottom' | 'neutral';
   relatedGroups?: { title: string; techniques: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[] }[];
@@ -57,10 +53,6 @@ interface Technique {
 
 // 탑/바텀 배지: 중립은 정보가 없는 것과 같아 표시하지 않는다.
 const POSITION_TYPE_LABELS: Record<string, string> = { top: '탑', bottom: '바텀' };
-
-function toLinked(items?: { _id: string; name: { ko: string } }[]): LinkedTechnique[] {
-  return (items || []).map((t) => ({ _id: t._id, name: { ko: t.name.ko } }));
-}
 
 function formatKoDate(value: string) {
   const d = new Date(value);
@@ -95,9 +87,6 @@ export default function TechniquePage() {
     roleTags: [] as string[],
     difficulty: 1,
     positionType: '' as '' | 'top' | 'bottom' | 'neutral',
-    sweeps: [] as LinkedTechnique[],
-    submissions: [] as LinkedTechnique[],
-    escapes: [] as LinkedTechnique[],
     relatedGroups: [] as EditableRelatedGroup[],
     parentId: null as string | null,
     videoUrls: [] as string[],
@@ -168,9 +157,6 @@ export default function TechniquePage() {
               roleTags: detailData.data.roleTags || [],
               difficulty: detailData.data.difficulty || 1,
               positionType: detailData.data.positionType || '',
-              sweeps: toLinked(detailData.data.sweepsFromHere),
-              submissions: toLinked(detailData.data.submissionsFromHere),
-              escapes: toLinked(detailData.data.escapesFromHere),
               relatedGroups: toEditableGroups(detailData.data.relatedGroups),
               parentId: detailData.data.parentId?._id || null,
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
@@ -221,9 +207,6 @@ export default function TechniquePage() {
       roleTags: technique.roleTags || [],
       difficulty: technique.difficulty || 1,
       positionType: technique.positionType || '',
-      sweeps: toLinked(technique.sweepsFromHere),
-      submissions: toLinked(technique.submissionsFromHere),
-      escapes: toLinked(technique.escapesFromHere),
       relatedGroups: toEditableGroups(technique.relatedGroups),
       parentId: technique.parentId?._id || null,
       videoUrls: technique.videos?.map(v => v.url) || [],
@@ -346,9 +329,6 @@ export default function TechniquePage() {
         difficulty: editForm.difficulty,
         // 미지정('')이면 보내지 않아 기존 값을 건드리지 않는다.
         ...(editForm.positionType && { positionType: editForm.positionType }),
-        sweepsFromHere: editForm.sweeps.map((t) => t._id),
-        submissionsFromHere: editForm.submissions.map((t) => t._id),
-        escapesFromHere: editForm.escapes.map((t) => t._id),
         relatedGroups: toPayloadGroups(editForm.relatedGroups),
         parentId: editForm.parentId || null,
         videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
@@ -391,9 +371,6 @@ export default function TechniquePage() {
               roleTags: detailData.data.roleTags || [],
               difficulty: detailData.data.difficulty || 1,
               positionType: detailData.data.positionType || '',
-              sweeps: toLinked(detailData.data.sweepsFromHere),
-              submissions: toLinked(detailData.data.submissionsFromHere),
-              escapes: toLinked(detailData.data.escapesFromHere),
               relatedGroups: toEditableGroups(detailData.data.relatedGroups),
               parentId: detailData.data.parentId?._id || null,
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
@@ -801,28 +778,6 @@ export default function TechniquePage() {
               urls={editForm.videoUrls}
               onChange={(urls) => setEditForm({ ...editForm, videoUrls: urls })}
             />
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">이 기술에서 이어지는 기술 (선택)</h3>
-              <LinkedTechniquesInput
-                label="스윕"
-                items={editForm.sweeps}
-                excludeId={technique._id}
-                onChange={(sweeps) => setEditForm({ ...editForm, sweeps })}
-              />
-              <LinkedTechniquesInput
-                label="서브미션"
-                items={editForm.submissions}
-                excludeId={technique._id}
-                onChange={(submissions) => setEditForm({ ...editForm, submissions })}
-              />
-              <LinkedTechniquesInput
-                label="이스케이프"
-                items={editForm.escapes}
-                excludeId={technique._id}
-                onChange={(escapes) => setEditForm({ ...editForm, escapes })}
-              />
-            </div>
-
             <RelatedGroupsEditor
               groups={editForm.relatedGroups}
               excludeId={technique._id}
@@ -913,9 +868,6 @@ export default function TechniquePage() {
           <TechniqueRelatedSections
             techniqueId={technique._id}
             groups={technique.relatedGroups}
-            sweeps={technique.sweepsFromHere}
-            submissions={technique.submissionsFromHere}
-            escapes={technique.escapesFromHere}
           />
         )}
 

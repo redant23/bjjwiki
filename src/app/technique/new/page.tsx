@@ -11,7 +11,6 @@ import { VideoUrlInput } from '@/components/ui/VideoUrlInput';
 import { TagInput } from '@/components/ui/TagInput';
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 import { RoleTagInput } from '@/components/ui/RoleTagInput';
-import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import { RelatedGroupsEditor, toPayloadGroups, type EditableRelatedGroup } from '@/components/ui/RelatedGroupsEditor';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 import { getFirstYoutubeThumbnail } from '@/lib/youtube';
@@ -39,9 +38,6 @@ export default function NewTechniquePage() {
     videoUrls: [''],
     imageUrl: '',
     roleTags: [] as string[],
-    sweeps: [] as LinkedTechnique[],
-    submissions: [] as LinkedTechnique[],
-    escapes: [] as LinkedTechnique[],
     relatedGroups: [] as EditableRelatedGroup[],
   });
 
@@ -106,9 +102,6 @@ export default function NewTechniquePage() {
       videoUrls: [''],
       imageUrl: '',
       roleTags: [],
-      sweeps: [],
-      submissions: [],
-      escapes: [],
       relatedGroups: [],
     }));
     setThumbnailFile(null);
@@ -160,9 +153,6 @@ export default function NewTechniquePage() {
         type: formData.type,
         primaryRole: formData.primaryRole,
         roleTags: formData.roleTags,
-        sweepsFromHere: formData.sweeps.map((t) => t._id),
-        submissionsFromHere: formData.submissions.map((t) => t._id),
-        escapesFromHere: formData.escapes.map((t) => t._id),
         relatedGroups: toPayloadGroups(formData.relatedGroups),
         difficulty: Number(formData.difficulty),
         isCorePosition: formData.isCorePosition,
@@ -486,25 +476,6 @@ export default function NewTechniquePage() {
                 value={formData.description.ko}
                 onChange={(val) => setFormData({ ...formData, description: { ...formData.description, ko: val } })}
                 placeholder="기술에 대한 상세한 설명을 입력하세요..."
-              />
-            </div>
-
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-muted-foreground">이 기술에서 이어지는 기술 (선택)</h3>
-              <LinkedTechniquesInput
-                label="스윕"
-                items={formData.sweeps}
-                onChange={(sweeps) => setFormData({ ...formData, sweeps })}
-              />
-              <LinkedTechniquesInput
-                label="서브미션"
-                items={formData.submissions}
-                onChange={(submissions) => setFormData({ ...formData, submissions })}
-              />
-              <LinkedTechniquesInput
-                label="이스케이프"
-                items={formData.escapes}
-                onChange={(escapes) => setFormData({ ...formData, escapes })}
               />
             </div>
 

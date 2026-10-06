@@ -91,13 +91,9 @@ export const EDITABLE_TECHNIQUE_FIELDS = [
   'videos',
   'images',
   'thumbnailUrl',
-  'sweepsFromHere',
-  'submissionsFromHere',
-  'escapesFromHere',
   'relatedGroups',
 ] as const;
 
-const LINKED_TECHNIQUE_FIELDS = ['sweepsFromHere', 'submissionsFromHere', 'escapesFromHere'] as const;
 
 export function pickTechniquePayload(body: Record<string, unknown>): Record<string, unknown> {
   const picked: Record<string, unknown> = {};
@@ -498,12 +494,6 @@ export async function applyTechniqueEdit(
   // 제목이 있는 연결 목록: 제목/기술 정리, 중복 제거, 자기 자신 제외
   if ('relatedGroups' in body) {
     body.relatedGroups = normalizeRelatedGroups(body.relatedGroups, id);
-  }
-  // 자기 자신을 연결 기술로 지정할 수 없다.
-  for (const field of LINKED_TECHNIQUE_FIELDS) {
-    if (Array.isArray(body[field])) {
-      body[field] = body[field].filter((linkedId: unknown) => String(linkedId) !== id);
-    }
   }
 
   // Handle Parent Change
