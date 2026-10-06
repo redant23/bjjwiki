@@ -5,18 +5,50 @@ import { usePathname } from 'next/navigation';
 
 export interface AnnouncementItem {
   _id: string;
-  name: string;
-  href: string;
+  text: string;
+  href: string | null;
 }
 
 interface AnnouncementTickerProps {
   items: AnnouncementItem[];
 }
 
+// 링크가 있으면 링크로, 없으면 일반 텍스트로 그린다. 내부 경로는 클라이언트 이동, 외부 주소는 새 탭.
+function AnnouncementText({
+  item,
+  className,
+  hidden = false,
+}: {
+  item: AnnouncementItem;
+  className?: string;
+  hidden?: boolean;
+}) {
+  if (!item.href) return <span className={className}>{item.text}</span>;
+  const tabIndex = hidden ? -1 : undefined;
+  if (item.href.startsWith('/')) {
+    return (
+      <Link href={item.href} className={`${className ?? ''} hover:underline`} tabIndex={tabIndex}>
+        {item.text}
+      </Link>
+    );
+  }
+  return (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${className ?? ''} hover:underline`}
+      tabIndex={tabIndex}
+    >
+      {item.text}
+    </a>
+  );
+}
+
 export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
   const pathname = usePathname();
 
-  // 홈페이지 전용 공지: 다른 페이지에서는 노출하지 않는다.
+  // 홈페이지 전용 공지: 다른 페이지에서는 노출하지 않는다. 노출 중인 공지가 없으면 바 자체를 그리지 않는다.
   if (pathname !== '/' || items.length === 0) {
     return null;
   }
@@ -34,9 +66,7 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
       <div className={stickyBarClasses}>
         <div className="mx-auto flex h-full max-w-screen-2xl items-center gap-2 px-4 text-sm sm:px-6 lg:px-8">
           <span className="shrink-0 font-semibold text-accent">공지</span>
-          <Link href={item.href} className="truncate hover:underline">
-            {item.name} 기술이 새로 업데이트되었습니다.
-          </Link>
+          <AnnouncementText item={item} className="truncate" />
         </div>
       </div>
     );
@@ -60,21 +90,12 @@ export function AnnouncementTicker({ items }: AnnouncementTickerProps) {
                 동일하게 줘서 반복 지점에서 간격이 튀지 않게 한다. */}
             <div className="flex items-center gap-8 pr-8">
               {items.map((item) => (
-                <Link key={item._id} href={item.href} className="text-sm hover:underline">
-                  {item.name} 기술이 새로 업데이트되었습니다.
-                </Link>
+                <AnnouncementText key={item._id} item={item} className="text-sm" />
               ))}
             </div>
             <div className="flex items-center gap-8 pr-8" aria-hidden="true">
               {items.map((item) => (
-                <Link
-                  key={`clone-${item._id}`}
-                  href={item.href}
-                  className="text-sm hover:underline"
-                  tabIndex={-1}
-                >
-                  {item.name} 기술이 새로 업데이트되었습니다.
-                </Link>
+                <AnnouncementText key={`clone-${item._id}`} item={item} className="text-sm" hidden />
               ))}
             </div>
           </div>

@@ -32,9 +32,11 @@ interface SidebarProps {
   mobile?: boolean;
   onLinkClick?: () => void;
   initialTree: Technique[];
+  // 홈 상단에 공지 바가 실제로 그려질 때만 사이드바를 그 높이만큼 아래로 민다.
+  hasAnnouncements?: boolean;
 }
 
-export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps) {
+export function Sidebar({ mobile, onLinkClick, initialTree = [], hasAnnouncements = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [tree, setTree] = useState<Technique[]>(initialTree || []);
@@ -273,7 +275,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
   // 홈페이지에서는 네비바(3.5rem) 아래에 전체 폭 공지 바(h-10, 2.5rem)가
   // 추가로 붙으므로(AnnouncementTicker, layout.tsx), 데스크톱 고정 사이드바도
   // top-24(6rem)/h-[calc(100vh-6rem)]로 그만큼 밀어줘야 겹치지 않는다.
-  const isHome = pathname === '/';
+  const isHome = pathname === '/' && hasAnnouncements;
   const sidebarClasses = cn(
     "fixed left-0 z-30 w-64 shrink-0 overflow-y-auto border-r border-border bg-background",
     isHome ? "top-24 h-[calc(100vh-6rem)]" : "top-14 h-[calc(100vh-3.5rem)]",

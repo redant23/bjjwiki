@@ -2,7 +2,6 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
-import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 import { computePaths, findPathMismatches, wouldCreateCycle } from '@/lib/technique-tree';
 import { normalizeRoleTags } from '@/lib/technique-form';
 import {
@@ -477,31 +476,3 @@ export const getRoleTagCounts = unstable_cache(
   ['role-tag-counts'],
   { revalidate: 3600, tags: ['technique-tree'] }
 );
-
-export interface RecentlyUpdatedTechnique {
-  _id: string;
-  name: string;
-  href: string;
-}
-
-export async function getRecentlyUpdatedTechniques(
-  limit = 10
-): Promise<RecentlyUpdatedTechnique[]> {
-  await dbConnect();
-  const since = new Date(Date.now() - RECENT_UPDATE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
-
-  const techniques = await Technique.find({
-    status: 'published',
-    contentUpdatedAt: { $gte: since },
-  })
-    .select('_id name slug pathSlugs contentUpdatedAt')
-    .sort({ contentUpdatedAt: -1 })
-    .limit(limit)
-    .lean();
-
-  return techniques.map((tech) => ({
-    _id: tech._id.toString(),
-    name: tech.name.ko,
-    href: `/technique/${[...(tech.pathSlugs || []), tech.slug].join('/')}`,
-  }));
-}
