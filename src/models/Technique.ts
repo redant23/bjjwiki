@@ -53,6 +53,8 @@ export interface ITechnique extends Document {
   sweepsFromHere: mongoose.Types.ObjectId[];
   submissionsFromHere: mongoose.Types.ObjectId[];
   escapesFromHere: mongoose.Types.ObjectId[];
+  // 작성자가 제목을 짓고 그 아래에 기술들을 골라 넣는 연결 목록 (예: "방어법", "연습 드릴")
+  relatedGroups: { title: string; techniques: mongoose.Types.ObjectId[] }[];
 
   // 7. Media
   thumbnailUrl?: string;
@@ -149,6 +151,13 @@ const TechniqueSchema: Schema = new Schema(
     sweepsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
     submissionsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
     escapesFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
+    relatedGroups: [
+      {
+        _id: false,
+        title: { type: String, required: true, trim: true, maxlength: 30 },
+        techniques: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
+      },
+    ],
 
     // 7. Media
     thumbnailUrl: { type: String },

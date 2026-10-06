@@ -19,6 +19,7 @@ export async function GET(
       .populate('sweepsFromHere', 'name slug pathSlugs')
       .populate('submissionsFromHere', 'name slug pathSlugs')
       .populate('escapesFromHere', 'name slug pathSlugs')
+      .populate('relatedGroups.techniques', 'name slug pathSlugs')
       .populate('createdBy', 'nickname')
       .populate('lastEditedBy', 'nickname');
 

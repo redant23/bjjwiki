@@ -46,3 +46,45 @@ assert.equal(getFirstYoutubeThumbnail(['', 'https://vimeo.com/1', `https://youtu
 assert.equal(getFirstYoutubeThumbnail([]), null);
 
 console.log('technique-form: all checks passed');
+
+// ───── 제목이 있는 연결 기술 목록 ─────
+import { normalizeRelatedGroups } from '../src/lib/technique-form.ts';
+
+assert.deepEqual(normalizeRelatedGroups(undefined), []);
+assert.deepEqual(normalizeRelatedGroups('x'), []);
+assert.deepEqual(normalizeRelatedGroups([null, 1, 'a', {}, { title: 3, techniques: [] }]), []);
+
+// 정상 + 제목 공백 정리
+assert.deepEqual(normalizeRelatedGroups([{ title: '  이어지는   스윕 ', techniques: ['a', 'b'] }]), [
+  { title: '이어지는 스윕', techniques: ['a', 'b'] },
+]);
+// 제목이 비었거나 기술이 없으면 버림
+assert.deepEqual(normalizeRelatedGroups([{ title: '  ', techniques: ['a'] }, { title: '빈 목록', techniques: [] }]), []);
+// 기술 중복/자기 자신 제외, 비문자열/빈 id 무시
+assert.deepEqual(
+  normalizeRelatedGroups([{ title: '방어', techniques: ['a', 'a', 'self', ' ', 5, 'b'] }], 'self'),
+  [{ title: '방어', techniques: ['a', 'b'] }]
+);
+// 같은 제목(대소문자 무시)은 합침, 처음 쓴 제목 표기를 유지
+assert.deepEqual(
+  normalizeRelatedGroups([
+    { title: 'Drill', techniques: ['a'] },
+    { title: 'drill', techniques: ['a', 'b'] },
+  ]),
+  [{ title: 'Drill', techniques: ['a', 'b'] }]
+);
+// 자기 자신만 있던 목록은 통째로 사라짐
+assert.deepEqual(normalizeRelatedGroups([{ title: '방어', techniques: ['self'] }], 'self'), []);
+// 제목 30자 제한(글자 단위), 목록 10개/기술 30개 제한
+assert.equal(Array.from(normalizeRelatedGroups([{ title: '가'.repeat(50), techniques: ['a'] }])[0].title).length, 30);
+const manyGroups = Array.from({ length: 15 }, (_, i) => ({ title: `목록${i}`, techniques: ['a'] }));
+assert.equal(normalizeRelatedGroups(manyGroups).length, 10);
+const manyItems = [{ title: 't', techniques: Array.from({ length: 40 }, (_, i) => `id${i}`) }];
+assert.equal(normalizeRelatedGroups(manyItems)[0].techniques.length, 30);
+// 입력 순서 유지
+assert.deepEqual(
+  normalizeRelatedGroups([{ title: 'B', techniques: ['x'] }, { title: 'A', techniques: ['y'] }]).map((g) => g.title),
+  ['B', 'A']
+);
+
+console.log('related-groups: all checks passed');

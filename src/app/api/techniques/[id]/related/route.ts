@@ -4,10 +4,10 @@ import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import Combo from '@/models/Combo';
 
-const MAX_SIBLINGS = 12;
 const MAX_COMBOS = 6;
 
-// 상세 페이지 하단용: 같은 계열(형제) 기술, 이전/다음 형제, 이 기술이 포함된 콤보.
+// 상세 페이지 하단용: 이전/다음 형제, 이 기술이 포함된 콤보.
+// (형제 목록 자체는 화면에 보여주지 않는다 — 연결 기술은 작성자가 직접 고른 목록으로 보여준다.)
 export async function GET(
   _request: Request,
   props: { params: Promise<{ id: string }> }
@@ -50,8 +50,6 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        // 형제 중 자기 자신은 제외 (순서는 사이드바와 같은 order 기준)
-        siblings: siblings.filter((s) => s._id !== params.id).slice(0, MAX_SIBLINGS),
         prev: index > 0 ? siblings[index - 1] : null,
         next: index >= 0 && index < siblings.length - 1 ? siblings[index + 1] : null,
         combos: comboDocs.map((c) => ({

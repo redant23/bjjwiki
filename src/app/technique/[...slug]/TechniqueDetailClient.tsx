@@ -19,6 +19,12 @@ import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechnique
 import { TechniqueRelatedSections } from '@/components/technique/TechniqueRelatedSections';
 import { ChildTechniqueCards } from '@/components/technique/ChildTechniqueCards';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
+import {
+  RelatedGroupsEditor,
+  toEditableGroups,
+  toPayloadGroups,
+  type EditableRelatedGroup,
+} from '@/components/ui/RelatedGroupsEditor';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 
 interface Technique {
@@ -38,6 +44,7 @@ interface Technique {
   escapesFromHere?: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[];
   difficulty?: number;
   positionType?: 'top' | 'bottom' | 'neutral';
+  relatedGroups?: { title: string; techniques: { _id: string; name: { ko: string }; slug: string; pathSlugs?: string[] }[] }[];
   videos: { url: string }[];
   images: { url: string; captionKo?: string; captionEn?: string }[];
   thumbnailUrl?: string;
@@ -91,6 +98,7 @@ export default function TechniquePage() {
     sweeps: [] as LinkedTechnique[],
     submissions: [] as LinkedTechnique[],
     escapes: [] as LinkedTechnique[],
+    relatedGroups: [] as EditableRelatedGroup[],
     parentId: null as string | null,
     videoUrls: [] as string[],
     thumbnailUrl: '',
@@ -163,6 +171,7 @@ export default function TechniquePage() {
               sweeps: toLinked(detailData.data.sweepsFromHere),
               submissions: toLinked(detailData.data.submissionsFromHere),
               escapes: toLinked(detailData.data.escapesFromHere),
+              relatedGroups: toEditableGroups(detailData.data.relatedGroups),
               parentId: detailData.data.parentId?._id || null,
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
               thumbnailUrl: detailData.data.thumbnailUrl || '',
@@ -215,6 +224,7 @@ export default function TechniquePage() {
       sweeps: toLinked(technique.sweepsFromHere),
       submissions: toLinked(technique.submissionsFromHere),
       escapes: toLinked(technique.escapesFromHere),
+      relatedGroups: toEditableGroups(technique.relatedGroups),
       parentId: technique.parentId?._id || null,
       videoUrls: technique.videos?.map(v => v.url) || [],
       thumbnailUrl: technique.thumbnailUrl || '',
@@ -339,6 +349,7 @@ export default function TechniquePage() {
         sweepsFromHere: editForm.sweeps.map((t) => t._id),
         submissionsFromHere: editForm.submissions.map((t) => t._id),
         escapesFromHere: editForm.escapes.map((t) => t._id),
+        relatedGroups: toPayloadGroups(editForm.relatedGroups),
         parentId: editForm.parentId || null,
         videos: editForm.videoUrls.filter(url => url.trim()).map(url => ({ url })),
         thumbnailUrl: finalImageUrl,
@@ -383,6 +394,7 @@ export default function TechniquePage() {
               sweeps: toLinked(detailData.data.sweepsFromHere),
               submissions: toLinked(detailData.data.submissionsFromHere),
               escapes: toLinked(detailData.data.escapesFromHere),
+              relatedGroups: toEditableGroups(detailData.data.relatedGroups),
               parentId: detailData.data.parentId?._id || null,
               videoUrls: detailData.data.videos?.map((v: any) => v.url) || [],
               thumbnailUrl: detailData.data.thumbnailUrl || '',
@@ -810,6 +822,12 @@ export default function TechniquePage() {
                 onChange={(escapes) => setEditForm({ ...editForm, escapes })}
               />
             </div>
+
+            <RelatedGroupsEditor
+              groups={editForm.relatedGroups}
+              excludeId={technique._id}
+              onChange={(relatedGroups) => setEditForm({ ...editForm, relatedGroups })}
+            />
           </div>
         ) : (
           technique.videos && technique.videos.length > 0 && (
@@ -894,6 +912,7 @@ export default function TechniquePage() {
         {!isEditing && (
           <TechniqueRelatedSections
             techniqueId={technique._id}
+            groups={technique.relatedGroups}
             sweeps={technique.sweepsFromHere}
             submissions={technique.submissionsFromHere}
             escapes={technique.escapesFromHere}

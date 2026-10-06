@@ -59,3 +59,49 @@ export function normalizeRoleTags(tags: readonly string[]): string[] {
   }
   return result;
 }
+
+// ───────────────────────── 제목이 있는 연결 기술 목록 ─────────────────────────
+// 작성자가 "제목"(예: 이어지는 스윕, 방어법)을 짓고 그 아래에 기술들을 골라 넣는 목록.
+
+export const RELATED_GROUP_TITLE_MAX = 30;
+export const RELATED_GROUPS_MAX = 10;
+export const RELATED_GROUP_ITEMS_MAX = 30;
+
+export interface RelatedGroupInput {
+  title: string;
+  techniques: string[];
+}
+
+/**
+ * 입력을 저장 가능한 형태로 정리한다 (잘못된 항목은 조용히 버린다).
+ * - 제목은 공백을 정리하고 30자로 자르며, 제목이 비었거나 기술이 하나도 없는 목록은 버린다
+ * - 같은 제목(대소문자 무시)은 하나로 합치고, 기술 중복과 자기 자신(selfId)은 제외한다
+ * - 목록은 최대 10개, 목록당 기술은 최대 30개
+ */
+export function normalizeRelatedGroups(value: unknown, selfId?: string): RelatedGroupInput[] {
+  if (!Array.isArray(value)) return [];
+
+  const byTitle = new Map<string, RelatedGroupInput>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const { title: rawTitle, techniques } = raw as { title?: unknown; techniques?: unknown };
+    if (typeof rawTitle !== 'string' || !Array.isArray(techniques)) continue;
+
+    const title = Array.from(rawTitle.replace(/\s+/g, ' ').trim())
+      .slice(0, RELATED_GROUP_TITLE_MAX)
+      .join('')
+      .trim();
+    if (!title) continue;
+
+    const key = title.toLowerCase();
+    const group = byTitle.get(key) ?? { title, techniques: [] };
+    for (const id of techniques) {
+      const text = typeof id === 'string' ? id.trim() : '';
+      if (text && text !== selfId && !group.techniques.includes(text)) group.techniques.push(text);
+    }
+    group.techniques = group.techniques.slice(0, RELATED_GROUP_ITEMS_MAX);
+    byTitle.set(key, group);
+  }
+
+  return [...byTitle.values()].filter((g) => g.techniques.length > 0).slice(0, RELATED_GROUPS_MAX);
+}
