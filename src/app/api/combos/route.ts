@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
     const combos: any[] = await Combo.find()
       .sort(sortOptions)
-      .populate('techniques', 'name slug pathSlugs')
+      .populate('techniques', 'name slug pathSlugs type')
       .populate('createdBy', 'nickname')
       .lean();
 
