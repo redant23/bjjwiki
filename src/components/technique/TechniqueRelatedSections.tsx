@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { ROLE_LABELS } from '@/lib/technique-request-format';
 
 interface LinkedItem {
   _id: string;
@@ -21,7 +20,6 @@ interface RelatedTechnique {
 }
 
 interface RelatedData {
-  siblings: RelatedTechnique[];
   prev: RelatedTechnique | null;
   next: RelatedTechnique | null;
   combos: Array<{ _id: string; name: string; length: number; saveCount: number }>;
@@ -29,6 +27,8 @@ interface RelatedData {
 
 interface TechniqueRelatedSectionsProps {
   techniqueId: string;
+  // 작성자가 제목을 짓고 기술을 골라 넣은 연결 목록
+  groups?: Array<{ title: string; techniques: LinkedItem[] }>;
   sweeps?: LinkedItem[];
   submissions?: LinkedItem[];
   escapes?: LinkedItem[];
@@ -36,9 +36,10 @@ interface TechniqueRelatedSectionsProps {
 
 const hrefOf = (t: LinkedItem) => `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
 
-// 상세 페이지 하단: 이어지는 기술 / 같은 계열 기술 / 포함된 콤보 / 이전·다음 형제.
+// 상세 페이지 하단: 이어지는 기술 / 작성자가 만든 제목별 연결 목록 / 포함된 콤보 / 이전·다음 형제.
 export function TechniqueRelatedSections({
   techniqueId,
+  groups = [],
   sweeps = [],
   submissions = [],
   escapes = [],
@@ -92,31 +93,24 @@ export function TechniqueRelatedSections({
         </section>
       )}
 
-      {related && related.siblings.length > 0 && (
-        <section className="pt-6 border-t border-border">
-          <h2 className="text-2xl font-semibold mb-4">같은 계열 기술</h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {related.siblings.map((s) => (
-              <Link
-                key={s._id}
-                href={s.href}
-                className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 hover:bg-accent hover:border-primary/50 transition-all"
-              >
-                {s.thumbnailUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={s.thumbnailUrl} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-                )}
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold">{s.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {ROLE_LABELS[s.primaryRole] || s.primaryRole}
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
+      {groups
+        .filter((g) => g.title && g.techniques.length > 0)
+        .map((group) => (
+          <section key={group.title} className="pt-6 border-t border-border">
+            <h2 className="text-2xl font-semibold mb-4">{group.title}</h2>
+            <div className="flex flex-wrap gap-2">
+              {group.techniques.map((item) => (
+                <Link
+                  key={item._id}
+                  href={hrefOf(item)}
+                  className="rounded-full border border-border px-3 py-1 text-sm hover:bg-accent hover:border-primary/50 transition-colors"
+                >
+                  {item.name.ko}
+                </Link>
+              ))}
+            </div>
+          </section>
+        ))}
 
       {related && related.combos.length > 0 && (
         <section className="pt-6 border-t border-border">

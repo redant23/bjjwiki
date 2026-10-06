@@ -12,6 +12,7 @@ import { TagInput } from '@/components/ui/TagInput';
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 import { RoleTagInput } from '@/components/ui/RoleTagInput';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
+import { RelatedGroupsEditor, toPayloadGroups, type EditableRelatedGroup } from '@/components/ui/RelatedGroupsEditor';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 import { getFirstYoutubeThumbnail } from '@/lib/youtube';
 import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
@@ -41,6 +42,7 @@ export default function NewTechniquePage() {
     sweeps: [] as LinkedTechnique[],
     submissions: [] as LinkedTechnique[],
     escapes: [] as LinkedTechnique[],
+    relatedGroups: [] as EditableRelatedGroup[],
   });
 
   // 주 역할이 상위 기술에서 자동으로 채워진 값인지 (직접 고르면 false)
@@ -107,6 +109,7 @@ export default function NewTechniquePage() {
       sweeps: [],
       submissions: [],
       escapes: [],
+      relatedGroups: [],
     }));
     setThumbnailFile(null);
     setPreviewUrl('');
@@ -160,6 +163,7 @@ export default function NewTechniquePage() {
         sweepsFromHere: formData.sweeps.map((t) => t._id),
         submissionsFromHere: formData.submissions.map((t) => t._id),
         escapesFromHere: formData.escapes.map((t) => t._id),
+        relatedGroups: toPayloadGroups(formData.relatedGroups),
         difficulty: Number(formData.difficulty),
         isCorePosition: formData.isCorePosition,
         ...(formData.positionType && { positionType: formData.positionType }),
@@ -503,6 +507,11 @@ export default function NewTechniquePage() {
                 onChange={(escapes) => setFormData({ ...formData, escapes })}
               />
             </div>
+
+            <RelatedGroupsEditor
+              groups={formData.relatedGroups}
+              onChange={(relatedGroups) => setFormData({ ...formData, relatedGroups })}
+            />
 
             <VideoUrlInput
               urls={formData.videoUrls}

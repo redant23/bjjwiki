@@ -9,7 +9,7 @@ import {
   planMove,
   wouldCreateCycle,
 } from '@/lib/technique-tree';
-import { normalizeRoleTags } from '@/lib/technique-form';
+import { normalizeRelatedGroups, normalizeRoleTags } from '@/lib/technique-form';
 import {
   findSimilarTechniques,
   normalizeAliasList,
@@ -94,6 +94,7 @@ export const EDITABLE_TECHNIQUE_FIELDS = [
   'sweepsFromHere',
   'submissionsFromHere',
   'escapesFromHere',
+  'relatedGroups',
 ] as const;
 
 const LINKED_TECHNIQUE_FIELDS = ['sweepsFromHere', 'submissionsFromHere', 'escapesFromHere'] as const;
@@ -226,6 +227,9 @@ export async function createTechniqueFromPayload(
   }
   if (Array.isArray(body.roleTags)) {
     body.roleTags = normalizeRoleTags(body.roleTags);
+  }
+  if ('relatedGroups' in body) {
+    body.relatedGroups = normalizeRelatedGroups(body.relatedGroups);
   }
 
   // 새 기술은 같은 부모의 형제들 맨 뒤에 둔다 (기본값 0이 형제와 겹치지 않도록).
@@ -490,6 +494,10 @@ export async function applyTechniqueEdit(
   }
   if (Array.isArray(body.roleTags)) {
     body.roleTags = normalizeRoleTags(body.roleTags);
+  }
+  // 제목이 있는 연결 목록: 제목/기술 정리, 중복 제거, 자기 자신 제외
+  if ('relatedGroups' in body) {
+    body.relatedGroups = normalizeRelatedGroups(body.relatedGroups, id);
   }
   // 자기 자신을 연결 기술로 지정할 수 없다.
   for (const field of LINKED_TECHNIQUE_FIELDS) {
