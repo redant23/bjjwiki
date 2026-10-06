@@ -879,7 +879,8 @@ export default function TechniquePage() {
         </section>
 
         {/* Children / Variations */}
-        {technique.childrenIds && technique.childrenIds.length > 0 && (
+        {/* 하위 기술 카드는 보기 모드에서만 보여준다 (편집 중에는 입력 폼에 집중). */}
+        {!isEditing && technique.childrenIds && technique.childrenIds.length > 0 && (
           <section className="pt-6 border-t border-border">
             <h2 className="text-2xl font-semibold mb-4">하위 기술 및 변형</h2>
             <ChildTechniqueCards
