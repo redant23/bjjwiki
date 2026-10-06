@@ -221,6 +221,15 @@ export async function createTechniqueFromPayload(
     body.roleTags = normalizeRoleTags(body.roleTags);
   }
 
+  // 새 기술은 같은 부모의 형제들 맨 뒤에 둔다 (기본값 0이 형제와 겹치지 않도록).
+  if (typeof body.order !== 'number') {
+    const last = await Technique.findOne({ parentId: body.parentId || null })
+      .sort({ order: -1 })
+      .select('order')
+      .lean();
+    body.order = last ? (last.order ?? 0) + 1 : 0;
+  }
+
   // 3. Create Technique
   const technique = (await Technique.create({
     ...body,
@@ -347,7 +356,10 @@ export async function rebuildTechniquePaths(
 export async function applyTechniqueEdit(
   id: string,
   payload: Record<string, unknown>,
-  actorId?: string
+  actorId?: string,
+  // silent: 이름/태그 정리 같은 경미한 수정. contentUpdatedAt을 갱신하지 않아
+  // 사이드바 노란 점과 홈 공지에 "최근 업데이트"로 올라가지 않는다.
+  options: { silent?: boolean } = {}
 ): Promise<ITechnique | null> {
   await dbConnect();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -431,7 +443,9 @@ export async function applyTechniqueEdit(
   if (actorId) {
     update.lastEditedBy = actorId;
   }
-  update.contentUpdatedAt = new Date();
+  if (!options.silent) {
+    update.contentUpdatedAt = new Date();
+  }
 
   const technique = await Technique.findByIdAndUpdate(
     id,
