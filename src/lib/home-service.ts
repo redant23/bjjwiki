@@ -2,21 +2,11 @@ import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import Combo from '@/models/Combo';
 import { unstable_cache } from 'next/cache';
-import { summarizeMarkdown } from '@/lib/technique-cards';
+import { CARD_FIELDS, toTechniqueCard, type TechniqueCardData } from '@/lib/technique-card-data';
 import { pickDailyIndex } from '@/lib/home-picks';
 
-export interface HomeTechniqueCard {
-  _id: string;
-  name: string;
-  href: string;
-  primaryRole: string;
-  type: string;
-  thumbnailUrl: string | null;
-  summary: string;
-  hasVideo: boolean;
-  /** 썸네일이 없을 때 아이콘을 고르기 위한 루트 분류 이름 */
-  rootName: string;
-}
+// 홈과 탐색 페이지가 같은 카드 모양을 쓴다.
+export type HomeTechniqueCard = TechniqueCardData;
 
 export interface HomeCategory {
   _id: string;
@@ -42,27 +32,6 @@ export interface HomeData {
 
 const RECENT_COUNT = 8;
 const COMBO_COUNT = 4;
-
-const CARD_FIELDS =
-  'name slug pathSlugs primaryRole type thumbnailUrl videos.url description.ko';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type CardDoc = any;
-
-function toCard(doc: CardDoc, rootNameBySlug: Map<string, string>): HomeTechniqueCard {
-  const pathSlugs: string[] = doc.pathSlugs || [];
-  return {
-    _id: doc._id.toString(),
-    name: doc.name.ko,
-    href: `/technique/${[...pathSlugs, doc.slug].join('/')}`,
-    primaryRole: doc.primaryRole,
-    type: doc.type,
-    thumbnailUrl: doc.thumbnailUrl || null,
-    summary: summarizeMarkdown(doc.description?.ko, 60),
-    hasVideo: (doc.videos ?? []).some((v: { url?: string }) => !!v.url?.trim()),
-    rootName: rootNameBySlug.get(pathSlugs[0] ?? doc.slug) ?? doc.name.ko,
-  };
-}
 
 // dateKey를 인자로 받아 날짜별로 캐시가 나뉘고, 하루 동안 "오늘의 기술"이 고정된다.
 // 트리와 같은 태그를 쓰므로 기술이 추가/수정/삭제되면 함께 갱신된다.
@@ -114,8 +83,8 @@ export const getHomeData = unstable_cache(
       .lean();
 
     return {
-      today: todayDoc ? toCard(todayDoc, rootNameBySlug) : null,
-      recent: recentDocs.map((d) => toCard(d, rootNameBySlug)),
+      today: todayDoc ? toTechniqueCard(todayDoc, rootNameBySlug) : null,
+      recent: recentDocs.map((d) => toTechniqueCard(d, rootNameBySlug)),
       categories,
       combos: comboDocs.map((c) => ({
         _id: c._id.toString(),

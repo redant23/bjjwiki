@@ -40,6 +40,12 @@ export function NavbarClient() {
           {/* Primary Nav (Desktop) */}
           <nav className="flex items-center gap-1 mr-4">
             <Link
+              href="/techniques"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3"
+            >
+              기술 탐색
+            </Link>
+            <Link
               href="/combo"
               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-9 px-3"
             >
