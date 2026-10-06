@@ -17,6 +17,7 @@ import { getYoutubeEmbedUrl, getFirstYoutubeThumbnail } from '@/lib/youtube';
 import { RoleTagInput } from '@/components/ui/RoleTagInput';
 import { SimilarTechniqueWarning } from '@/components/technique/SimilarTechniqueWarning';
 import { TechniqueRelatedSections } from '@/components/technique/TechniqueRelatedSections';
+import { ChildTechniqueCards } from '@/components/technique/ChildTechniqueCards';
 import { LinkedTechniquesInput, LinkedTechnique } from '@/components/ui/LinkedTechniquesInput';
 import { PRIMARY_ROLE_OPTIONS, insertDescriptionTemplate } from '@/lib/technique-form';
 
@@ -881,20 +882,11 @@ export default function TechniquePage() {
         {technique.childrenIds && technique.childrenIds.length > 0 && (
           <section className="pt-6 border-t border-border">
             <h2 className="text-2xl font-semibold mb-4">하위 기술 및 변형</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {technique.childrenIds.map((child) => (
-                <Link
-                  key={child._id}
-                  href={`/technique/${[...technique.pathSlugs, technique.slug, child.slug].join('/')}`}
-                  className="block p-4 rounded-lg border border-border bg-card hover:bg-accent hover:border-primary/50 transition-all"
-                >
-                  <div className="font-semibold text-foreground mb-1">{child.name.ko}</div>
-                  <div className="text-sm text-muted-foreground capitalize">
-                    {translateRole(child.primaryRole)} • {translateType(child.type)}
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <ChildTechniqueCards
+              techniqueId={technique._id}
+              basePath={[...technique.pathSlugs, technique.slug]}
+              basicChildren={technique.childrenIds}
+            />
           </section>
         )}
 

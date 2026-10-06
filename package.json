@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "verify:tree": "node --experimental-strip-types scripts/verify-technique-tree.ts",
-    "verify": "npm run verify:tree && node --experimental-strip-types scripts/verify-technique-form.ts && node --experimental-strip-types scripts/verify-technique-quality.ts && node --experimental-strip-types scripts/verify-technique-similarity.ts && node --experimental-strip-types scripts/verify-technique-order.ts"
+    "verify": "npm run verify:tree && node --experimental-strip-types scripts/verify-technique-form.ts && node --experimental-strip-types scripts/verify-technique-quality.ts && node --experimental-strip-types scripts/verify-technique-similarity.ts && node --experimental-strip-types scripts/verify-technique-order.ts && node --experimental-strip-types scripts/verify-technique-cards.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
