@@ -27,16 +27,17 @@ export const metadata: Metadata = {
   },
 };
 
-import { getTechniqueTree, getRecentlyUpdatedTechniques } from "@/lib/technique-service";
+import { getTechniqueTree } from "@/lib/technique-service";
+import { getActiveAnnouncements } from "@/lib/announcement-service";
 
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [tree, recentlyUpdated] = await Promise.all([
+  const [tree, announcements] = await Promise.all([
     getTechniqueTree(),
-    getRecentlyUpdatedTechniques(),
+    getActiveAnnouncements(),
   ]);
 
   return (
@@ -49,9 +50,9 @@ export default async function RootLayout({
                 같은 레벨(형제)에 둔다. 홈페이지가 아니면 내부에서 null을
                 반환한다 — Sidebar.tsx의 홈페이지 전용 top 오프셋과 짝을
                 이루므로 함께 수정할 것. */}
-            <AnnouncementTicker items={recentlyUpdated} />
+            <AnnouncementTicker items={announcements} />
             <div className="flex-1 flex">
-              <Sidebar initialTree={tree} />
+              <Sidebar initialTree={tree} hasAnnouncements={announcements.length > 0} />
               <main className="relative w-full min-w-0 md:ml-64">
                 <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:py-10 md:pb-10">
                   {children}

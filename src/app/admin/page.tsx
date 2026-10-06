@@ -89,6 +89,12 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/admin/announcements"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            공지 관리
+          </Link>
+          <Link
             href="/admin/quality"
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
           >
