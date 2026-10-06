@@ -19,18 +19,15 @@ interface RelatedTechnique {
   thumbnailUrl: string | null;
 }
 
-interface FollowingItem {
-  _id: string;
-  name: string;
-  href: string;
-  count: number;
-}
-
 interface RelatedData {
-  following: FollowingItem[];
   prev: RelatedTechnique | null;
   next: RelatedTechnique | null;
-  combos: Array<{ _id: string; name: string; length: number; saveCount: number }>;
+  combos: Array<{
+    _id: string;
+    name: string;
+    saveCount: number;
+    chain: Array<{ _id: string; name: string; href: string }>;
+  }>;
 }
 
 interface TechniqueRelatedSectionsProps {
@@ -41,7 +38,7 @@ interface TechniqueRelatedSectionsProps {
 
 const hrefOf = (t: LinkedItem) => `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
 
-// 상세 페이지 하단: 콤보 기반 이어지는 기술 / 작성자가 만든 제목별 연결 목록 / 포함된 콤보 / 이전·다음 형제.
+// 상세 페이지 하단: 작성자가 만든 제목별 연결 목록 / 이 기술이 포함된 콤보(기술 체인) / 이전·다음 형제.
 export function TechniqueRelatedSections({
   techniqueId,
   groups = [],
@@ -67,25 +64,6 @@ export function TechniqueRelatedSections({
 
   return (
     <>
-      {related && related.following.length > 0 && (
-        <section className="pt-6 border-t border-border">
-          <h2 className="text-2xl font-semibold">여기서 이어지는 기술</h2>
-          <p className="mb-4 text-sm text-muted-foreground">콤보에 등록된 연결을 기준으로 보여줍니다.</p>
-          <div className="flex flex-wrap gap-2">
-            {related.following.map((item) => (
-              <Link
-                key={item._id}
-                href={item.href}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-sm hover:bg-accent hover:border-primary/50 transition-colors"
-              >
-                {item.name}
-                <span className="text-xs text-muted-foreground">콤보 {item.count}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
       {groups
         .filter((g) => g.title && g.techniques.length > 0)
         .map((group) => (
@@ -108,18 +86,42 @@ export function TechniqueRelatedSections({
       {related && related.combos.length > 0 && (
         <section className="pt-6 border-t border-border">
           <h2 className="text-2xl font-semibold mb-4">이 기술이 포함된 콤보</h2>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {related.combos.map((c) => (
-              <li key={c._id}>
-                <Link
-                  href={`/combo/${c._id}`}
-                  className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 hover:bg-accent hover:border-primary/50 transition-all"
-                >
-                  <span className="font-medium">{c.name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {c.length}단계{c.saveCount > 0 && ` · 저장 ${c.saveCount}`}
-                  </span>
-                </Link>
+              // 카드 전체를 누르면 콤보 상세로 가고(작은 콤보 이름 링크를 카드 크기로 늘림), 체인의 각 기술은
+              // 그 위(z-10)에서 따로 눌린다. 링크 안에 링크를 넣지 않기 위한 구조.
+              <li
+                key={c._id}
+                className="relative rounded-lg border border-border bg-card px-4 py-3 transition-all hover:border-primary/50 hover:bg-accent/30"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <Link href={`/combo/${c._id}`} className="truncate hover:underline after:absolute after:inset-0">
+                    {c.name}
+                  </Link>
+                  {c.saveCount > 0 && <span className="shrink-0">저장 {c.saveCount}</span>}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+                  {c.chain.map((step, index) => (
+                    <span key={`${step._id}-${index}`} className="inline-flex items-center gap-2">
+                      {step._id === techniqueId ? (
+                        // 지금 보고 있는 기술
+                        <span className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground">
+                          {step.name}
+                        </span>
+                      ) : (
+                        <Link
+                          href={step.href}
+                          className="relative z-10 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:border-primary/50 hover:bg-accent"
+                        >
+                          {step.name}
+                        </Link>
+                      )}
+                      {index < c.chain.length - 1 && (
+                        <span className="text-muted-foreground" aria-hidden="true">→</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
               </li>
             ))}
           </ul>
