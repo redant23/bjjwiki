@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface ITechnique extends Document {
   // 1. Basic Identification
   slug: string; // Unique, auto-generated from name
+  previousSlugs: string[]; // slug를 바꾼 적이 있으면 옛 slug들 (옛 주소를 새 주소로 보내기 위함)
 
   // 2. Name / Description (Multi-language)
   name: {
@@ -83,6 +84,7 @@ const TechniqueSchema: Schema = new Schema(
   {
     // 1. Basic Identification
     slug: { type: String, required: true, unique: true, index: true },
+    previousSlugs: { type: [String], default: [], index: true },
 
     // 2. Name / Description
     name: {

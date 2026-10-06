@@ -17,6 +17,7 @@ import {
   SimilarityInput,
 } from '@/lib/technique-similarity';
 import { isValidSlug, slugify } from '@/lib/technique-slug';
+import { redirectTargetFor, safeDecodeSegment } from '@/lib/technique-url';
 
 export const getTechniqueTree = unstable_cache(
   async () => {
@@ -137,9 +138,10 @@ async function assertSlugAvailable(slug: string, selfId?: string) {
   if (!isValidSlug(slug)) {
     throw new Error('슬러그는 소문자 영문/숫자를 하이픈(-)으로 이은 형태여야 합니다. (예: triangle-choke)');
   }
-  const existing = await Technique.findOne({ slug }).select('_id');
+  // 다른 기술이 예전에 쓰던 slug도 막는다: 그 slug의 옛 주소가 새 기술로 잘못 연결되는 것을 방지.
+  const existing = await Technique.findOne({ $or: [{ slug }, { previousSlugs: slug }] }).select('_id');
   if (existing && existing._id.toString() !== selfId) {
-    throw new Error('이미 사용 중인 슬러그입니다.');
+    throw new Error('이미 사용 중이거나 예전에 다른 기술이 쓰던 슬러그입니다.');
   }
 }
 
@@ -543,6 +545,14 @@ export async function applyTechniqueEdit(
     return currentTechnique;
   }
 
+  // slug를 바꾸면 옛 slug를 기록해 두어, 옛 주소로 들어와도 새 주소로 보낼 수 있게 한다.
+  // (자기가 예전에 쓰던 slug로 되돌리는 경우에는 기록에서 뺀다.)
+  if (typeof update.slug === 'string') {
+    const history = new Set<string>([...(currentTechnique.previousSlugs ?? []), currentTechnique.slug]);
+    history.delete(update.slug);
+    update.previousSlugs = [...history];
+  }
+
   if (actorId) {
     update.lastEditedBy = actorId;
   }
@@ -580,3 +590,24 @@ export const getRoleTagCounts = unstable_cache(
   ['role-tag-counts'],
   { revalidate: 3600, tags: ['technique-tree'] }
 );
+
+/**
+ * /technique/<경로...> 요청이 정식 주소가 아니면 정식 주소를 돌려준다 (정식이거나 없는 기술이면 null).
+ * 마지막 조각(slug)으로 기술을 찾고, 없으면 예전 slug(previousSlugs)로 찾는다. 분류를 옮기거나
+ * slug를 바꾼 뒤의 옛 주소를 새 주소로 보내는 데 쓴다.
+ * 요청 주소는 임의의 값이 들어올 수 있어 캐시하지 않는다(인덱스를 타는 단순 조회라 비용이 작고,
+ * 이동 직후에도 항상 최신 주소로 판정된다).
+ */
+export async function getTechniqueRedirect(requested: string[]): Promise<string | null> {
+  const last = requested[requested.length - 1];
+  if (!last) return null;
+  const slug = safeDecodeSegment(last);
+
+  await dbConnect();
+  const target =
+    (await Technique.findOne({ slug }).select('slug pathSlugs').lean()) ??
+    (await Technique.findOne({ previousSlugs: slug }).select('slug pathSlugs').lean());
+  if (!target) return null;
+
+  return redirectTargetFor(requested, { slug: target.slug, pathSlugs: target.pathSlugs });
+}

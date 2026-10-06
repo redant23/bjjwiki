@@ -163,7 +163,7 @@ export default function AdminReorganizePage() {
     if (!preview || !previewIsCurrent || !target) return;
     const ok = confirm(
       `${preview.report.moved}개 기술을 "${target.name}" 아래로 옮깁니다.\n` +
-        `주소가 바뀌는 기술이 ${preview.report.affected}개이며, 기존 링크(공유된 주소 포함)는 더 이상 열리지 않습니다.\n\n계속할까요?`
+        `주소가 바뀌는 기술이 ${preview.report.affected}개입니다. 옛 주소로 들어와도 새 주소로 자동 이동합니다.\n\n계속할까요?`
     );
     if (ok) runMove(false);
   }
