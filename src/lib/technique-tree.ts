@@ -128,3 +128,88 @@ export function findPathMismatches(
   }
   return mismatches;
 }
+
+// ───────────────────────── 일괄 이동 ─────────────────────────
+
+export type MovePlan =
+  | {
+      ok: true;
+      /** 실제로 이동할 노드 (입력 순서 유지) */
+      toMove: string[];
+      skipped: Array<{ _id: string; reason: 'already_there' | 'duplicate' }>;
+    }
+  | { ok: false; code: 'empty' | 'not_found' | 'parent_not_found' | 'cycle'; error: string; _id?: string };
+
+/**
+ * 여러 노드를 한 부모(null이면 최상위) 아래로 옮기는 계획을 검증한다. DB는 건드리지 않는다.
+ * 하나라도 문제가 있으면 전체를 거부한다 (일부만 옮겨지는 상태를 만들지 않기 위해).
+ * - 존재하지 않는 노드/부모, 자기 자신이나 자손 밑으로의 이동(순환)은 거부
+ * - 이미 그 부모 아래에 있거나 중복으로 선택된 노드는 건너뜀
+ */
+export function planMove(nodes: TreeNode[], ids: readonly string[], newParentId: string | null): MovePlan {
+  if (ids.length === 0) return { ok: false, code: 'empty', error: '이동할 기술을 선택해주세요.' };
+  const byId = indexById(nodes);
+  if (newParentId && !byId.has(newParentId)) {
+    return { ok: false, code: 'parent_not_found', error: '새 상위 기술을 찾을 수 없습니다.' };
+  }
+
+  const toMove: string[] = [];
+  const skipped: Array<{ _id: string; reason: 'already_there' | 'duplicate' }> = [];
+  const seen = new Set<string>();
+
+  for (const id of ids) {
+    if (seen.has(id)) {
+      skipped.push({ _id: id, reason: 'duplicate' });
+      continue;
+    }
+    seen.add(id);
+    const node = byId.get(id);
+    if (!node) return { ok: false, code: 'not_found', error: '존재하지 않는 기술이 포함되어 있습니다.', _id: id };
+    if (wouldCreateCycle(nodes, id, newParentId)) {
+      return {
+        ok: false,
+        code: 'cycle',
+        error: `"${node.slug}"을(를) 자기 자신 또는 자신의 하위 기술 아래로 옮길 수 없습니다.`,
+        _id: id,
+      };
+    }
+    if ((node.parentId ?? null) === newParentId) {
+      skipped.push({ _id: id, reason: 'already_there' });
+      continue;
+    }
+    toMove.push(id);
+  }
+  return { ok: true, toMove, skipped };
+}
+
+export interface PathChange {
+  _id: string;
+  slug: string;
+  /** 이동 전 전체 경로 (루트 → 자기 자신 slug) */
+  before: string[];
+  after: string[];
+}
+
+/** 이동 후 주소(경로)가 바뀌는 모든 노드 (이동한 노드와 그 모든 자손). 이동 전/후 트리를 각각 계산해 비교한다. */
+export function movedPathChanges(
+  nodes: TreeNode[],
+  toMove: readonly string[],
+  newParentId: string | null
+): PathChange[] {
+  const moving = new Set(toMove);
+  const after = nodes.map((n) => (moving.has(n._id) ? { ...n, parentId: newParentId } : n));
+  const beforePaths = computePaths(nodes);
+  const afterPaths = computePaths(after, [...toMove]);
+  const changes: PathChange[] = [];
+  for (const node of nodes) {
+    const next = afterPaths.get(node._id);
+    const prev = beforePaths.get(node._id);
+    if (!next || !prev) continue;
+    const beforeFull = [...prev.pathSlugs, node.slug];
+    const afterFull = [...next.pathSlugs, node.slug];
+    if (beforeFull.join('/') !== afterFull.join('/')) {
+      changes.push({ _id: node._id, slug: node.slug, before: beforeFull, after: afterFull });
+    }
+  }
+  return changes;
+}

@@ -87,7 +87,13 @@ export default function AdminDashboard() {
             Logged in as {session?.user?.email}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href="/admin/reorganize"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            분류 정리
+          </Link>
           <Link
             href="/admin/announcements"
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
