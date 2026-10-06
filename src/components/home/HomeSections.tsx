@@ -2,21 +2,9 @@ import Link from 'next/link';
 import { ArrowRight, Video } from 'lucide-react';
 import type { HomeCategory, HomeCombo, HomeData, HomeTechniqueCard } from '@/lib/home-service';
 import { ROLE_LABELS } from '@/lib/technique-request-format';
+import { CardThumb, TechniqueCard } from '@/components/technique/TechniqueCard';
 import { categoryIconKey } from '@/lib/technique-cards';
 import { CATEGORY_ICONS } from '@/components/technique/category-icons';
-
-function Thumb({ card, className }: { card: HomeTechniqueCard; className: string }) {
-  if (card.thumbnailUrl) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={card.thumbnailUrl} alt="" className={`${className} object-cover`} />;
-  }
-  const Icon = CATEGORY_ICONS[categoryIconKey(card.rootName)];
-  return (
-    <div className={`${className} flex items-center justify-center bg-muted text-muted-foreground`}>
-      <Icon className="h-1/3 w-1/3" aria-hidden="true" />
-    </div>
-  );
-}
 
 function SectionTitle({ children, href, linkLabel }: { children: React.ReactNode; href?: string; linkLabel?: string }) {
   return (
@@ -38,7 +26,7 @@ function TodayCard({ card }: { card: HomeTechniqueCard }) {
       href={card.href}
       className="flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-md sm:flex-row"
     >
-      <Thumb card={card} className="aspect-video w-full shrink-0 sm:aspect-auto sm:h-auto sm:w-64" />
+      <CardThumb card={card} className="aspect-video w-full shrink-0 sm:aspect-auto sm:h-auto sm:w-64" />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 p-5">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>{ROLE_LABELS[card.primaryRole] || card.primaryRole}</span>
@@ -51,24 +39,6 @@ function TodayCard({ card }: { card: HomeTechniqueCard }) {
         </div>
         <div className="text-2xl font-bold">{card.name}</div>
         {card.summary && <p className="line-clamp-3 text-muted-foreground">{card.summary}</p>}
-      </div>
-    </Link>
-  );
-}
-
-function RecentCard({ card }: { card: HomeTechniqueCard }) {
-  return (
-    <Link
-      href={card.href}
-      className="group overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/50 hover:shadow-md"
-    >
-      <Thumb card={card} className="aspect-video w-full" />
-      <div className="p-3">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-semibold">{card.name}</span>
-          {card.hasVideo && <Video className="h-3.5 w-3.5 shrink-0 text-primary" aria-label="영상 있음" />}
-        </div>
-        <div className="text-xs text-muted-foreground">{ROLE_LABELS[card.primaryRole] || card.primaryRole}</div>
       </div>
     </Link>
   );
@@ -123,7 +93,7 @@ export function HomeSections({ data }: { data: HomeData }) {
           <SectionTitle>최근 추가</SectionTitle>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {data.recent.map((card) => (
-              <RecentCard key={card._id} card={card} />
+              <TechniqueCard key={card._id} card={card} />
             ))}
           </div>
         </section>

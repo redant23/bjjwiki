@@ -118,6 +118,14 @@ export function MobileBottomNav({ initialTree }: MobileBottomNavProps) {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto">
+            <Link
+              href="/techniques"
+              onClick={closeDrawer}
+              className="mx-4 mt-4 flex items-center justify-between rounded-md border border-border px-4 py-3 text-sm font-medium hover:bg-muted/50"
+            >
+              필터로 기술 탐색하기
+              <span aria-hidden="true">→</span>
+            </Link>
             <Sidebar mobile onLinkClick={closeDrawer} initialTree={initialTree} />
           </div>
         </div>
