@@ -89,6 +89,8 @@ export default function TechniquePage() {
 
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  // 관리자 전용: 경미한 수정은 "최근 업데이트"(사이드바 노란 점, 홈 공지)로 올리지 않는다.
+  const [silentSave, setSilentSave] = useState(false);
 
   // params.slug is an array of strings, e.g. ['guard', 'x-guard']
   const slugArray = params.slug as string[];
@@ -332,12 +334,13 @@ export default function TechniquePage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, silent: silentSave }),
         });
 
         const data = await res.json();
 
         if (data.success) {
+          setSilentSave(false);
           // Refresh the technique data
           const detailRes = await fetch(`/api/techniques/${technique._id}`);
           const detailData = await detailRes.json();
@@ -492,6 +495,19 @@ export default function TechniquePage() {
 
           {isEditing && (
             <>
+              {isAdmin && (
+                <label
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground"
+                  title="오타·태그 정리 같은 경미한 수정일 때 체크하세요. 사이드바 노란 점과 홈 공지에 올라가지 않습니다."
+                >
+                  <input
+                    type="checkbox"
+                    checked={silentSave}
+                    onChange={(e) => setSilentSave(e.target.checked)}
+                  />
+                  조용히 저장
+                </label>
+              )}
               <button
                 onClick={handleCancel}
                 disabled={saving}

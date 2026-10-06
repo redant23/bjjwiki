@@ -47,8 +47,11 @@ export async function PUT(
     const { session, error: authError } = await requireAdmin();
     if (authError) return authError;
 
-    const body = await request.json();
-    const technique = await applyTechniqueEdit(params.id, body, session!.user.id);
+    // silent는 저장 옵션이지 기술 필드가 아니므로 payload에서 분리한다.
+    const { silent, ...payload } = await request.json();
+    const technique = await applyTechniqueEdit(params.id, payload, session!.user.id, {
+      silent: silent === true,
+    });
 
     if (!technique) {
       return NextResponse.json(

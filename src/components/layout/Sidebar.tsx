@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Search, ArrowUp, ArrowDown, Settings, Check } from 'lucide-react';
-import { isWithinRecentWindow } from '@/lib/recent-update';
+import { isWithinRecentWindow, RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 
 interface Technique {
   _id: string;
@@ -18,15 +18,6 @@ interface Technique {
   contentUpdatedAt?: string | null;
 }
 
-// 형제 목록 내에서 "최근 3일 이내 수정된" 항목만 원래 순서를 유지한 채 맨 앞으로
-// 옮긴다. 나머지(비-최근) 항목들의 상대 순서는 그대로 유지되므로 관리자가
-// "순서 편집"으로 설정한 커스텀 순서를 해치지 않는다.
-function sortByRecency(nodes: Technique[]): Technique[] {
-  const recent = nodes.filter((n) => isWithinRecentWindow(n.contentUpdatedAt));
-  const rest = nodes.filter((n) => !isWithinRecentWindow(n.contentUpdatedAt));
-  return [...recent, ...rest];
-}
-
 // 트리 전체(하위 카테고리 포함)를 재귀적으로 순회해 등록된 기술 총 개수를 센다.
 function countTechniques(nodes: Technique[]): number {
   return nodes.reduce(
@@ -35,6 +26,8 @@ function countTechniques(nodes: Technique[]): number {
   );
 }
 
+const RECENT_DOT_LABEL = `최근 ${RECENT_UPDATE_WINDOW_DAYS}일 이내 수정됨`;
+
 interface SidebarProps {
   mobile?: boolean;
   onLinkClick?: () => void;
@@ -42,7 +35,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps) {
-  console.log('[Sidebar] Render. initialTree:', initialTree?.length);
   const pathname = usePathname();
   const router = useRouter();
   const [tree, setTree] = useState<Technique[]>(initialTree || []);
@@ -220,8 +212,13 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
             <span className="w-5" />
           )}
 
+          {/* 최근 수정 표시는 점만 보여주고 위치는 바꾸지 않는다 (정렬은 항상 order 기준). */}
           {isWithinRecentWindow(node.contentUpdatedAt) && (
-            <span className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-yellow-400" />
+            <span
+              className="mr-1.5 h-2 w-2 shrink-0 rounded-full bg-yellow-400"
+              title={RECENT_DOT_LABEL}
+              aria-label={RECENT_DOT_LABEL}
+            />
           )}
 
           <Link
@@ -244,7 +241,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
             {node.name.ko}
           </Link>
 
-          {isEditingOrder && depth === 0 && (
+          {isEditingOrder && (
             <div className="flex items-center gap-1 ml-2">
               <button
                 onClick={(e) => handleMove(node, 'up', e)}
@@ -266,7 +263,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
 
         {hasChildren && isExpanded && (
           <div className="border-l border-border/30 ml-4 pl-1">
-            {(isEditingOrder ? node.children! : sortByRecency(node.children!)).map(child => renderNode(child, depth + 1))}
+            {node.children!.map(child => renderNode(child, depth + 1))}
           </div>
         )}
       </div>
@@ -320,8 +317,12 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
           </div>
         </div>
         */}
-        <div className="mb-3 px-1 text-xs font-medium text-muted-foreground">
-          총 {countTechniques(tree)}개 기술
+        <div className="mb-3 space-y-1 px-1 text-xs font-medium text-muted-foreground">
+          <div>총 {countTechniques(tree)}개 기술</div>
+          <div className="flex items-center gap-1.5 font-normal">
+            <span className="h-2 w-2 shrink-0 rounded-full bg-yellow-400" aria-hidden="true" />
+            {RECENT_DOT_LABEL}
+          </div>
         </div>
         {/* Order Edit Button */}
         <div className="pb-4 bg-background">
@@ -349,7 +350,7 @@ export function Sidebar({ mobile, onLinkClick, initialTree = [] }: SidebarProps)
         </div>
 
         <nav className="w-full space-y-1 pb-40">
-          {(isEditingOrder ? tree : sortByRecency(tree)).map(node => renderNode(node))}
+          {tree.map(node => renderNode(node))}
 
           {tree.length === 0 && (
             <div className="text-sm text-muted-foreground text-center py-4">
