@@ -2,7 +2,13 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique, { ITechnique } from '@/models/Technique';
 import { unstable_cache } from 'next/cache';
-import { computePaths, findPathMismatches, wouldCreateCycle } from '@/lib/technique-tree';
+import {
+  computePaths,
+  findPathMismatches,
+  movedPathChanges,
+  planMove,
+  wouldCreateCycle,
+} from '@/lib/technique-tree';
 import { normalizeRoleTags } from '@/lib/technique-form';
 import {
   findSimilarTechniques,
@@ -350,6 +356,104 @@ export async function rebuildTechniquePaths(
     unreachable: options.rootIds ? [] : nodes.filter((n) => !expected.has(n._id)).map((n) => n.slug),
     samples: mismatches.slice(0, 20).map((m) => ({ slug: m.slug, stored: m.stored, expected: m.expected })),
   };
+}
+
+export interface MoveTechniquesResult {
+  ok: true;
+  dryRun: boolean;
+  moved: number;
+  skipped: Array<{ _id: string; reason: 'already_there' | 'duplicate' }>;
+  /** 이동으로 주소(경로)가 바뀌는 기술 수 (이동한 기술 + 모든 하위 기술) */
+  affected: number;
+  /** 바뀌는 주소 예시 (최대 10개) */
+  sample: Array<{ from: string; to: string }>;
+}
+
+export type MoveTechniquesFailure = { ok: false; code: string; error: string; _id?: string };
+
+/**
+ * 여러 기술을 한 상위 기술(null이면 최상위) 아래로 옮긴다.
+ * 모든 검증(존재, 순환)을 통과한 뒤에만 DB를 수정하며, 이동한 기술은 새 부모의 기존 자식들 뒤에
+ * 입력 순서대로 붙는다. 이동 후 하위 전체의 pathSlugs/level을 다시 계산한다.
+ * 트랜잭션은 쓰지 않는다: 도중에 실패하면 rebuild-paths / sync-children으로 복구한다.
+ */
+export async function moveTechniques(
+  ids: string[],
+  newParentId: string | null,
+  options: { dryRun?: boolean } = {}
+): Promise<MoveTechniquesResult | MoveTechniquesFailure> {
+  await dbConnect();
+  const nodes = await loadTreeNodes();
+  const plan = planMove(nodes, ids, newParentId);
+  if (!plan.ok) return plan;
+
+  const changes = movedPathChanges(nodes, plan.toMove, newParentId);
+  const result: MoveTechniquesResult = {
+    ok: true,
+    dryRun: !!options.dryRun,
+    moved: plan.toMove.length,
+    skipped: plan.skipped,
+    affected: changes.length,
+    sample: changes
+      .filter((c) => plan.toMove.includes(c._id))
+      .slice(0, 10)
+      .map((c) => ({ from: `/technique/${c.before.join('/')}`, to: `/technique/${c.after.join('/')}` })),
+  };
+  if (options.dryRun || plan.toMove.length === 0) return result;
+
+  const toObjectId = (id: string) => new mongoose.Types.ObjectId(id);
+  const parentOf = new Map(nodes.map((n) => [n._id, n.parentId]));
+
+  // 이동한 기술은 새 부모의 기존 자식들 뒤에 입력 순서대로 붙인다.
+  const last = await Technique.findOne({ parentId: newParentId })
+    .sort({ order: -1 })
+    .select('order')
+    .lean();
+  let nextOrder = last ? (last.order ?? 0) + 1 : 0;
+
+  await Technique.bulkWrite(
+    plan.toMove.map((id) => ({
+      updateOne: {
+        filter: { _id: toObjectId(id) },
+        update: { $set: { parentId: newParentId ? toObjectId(newParentId) : null, order: nextOrder++ } },
+      },
+    })),
+    { timestamps: false }
+  );
+
+  // 이전 부모들의 childrenIds에서 빼고, 새 부모의 childrenIds에 넣는다.
+  const movedByOldParent = new Map<string, mongoose.Types.ObjectId[]>();
+  for (const id of plan.toMove) {
+    const oldParent = parentOf.get(id);
+    if (!oldParent) continue;
+    const list = movedByOldParent.get(oldParent) ?? [];
+    list.push(toObjectId(id));
+    movedByOldParent.set(oldParent, list);
+  }
+  const childrenOps: Parameters<typeof Technique.bulkWrite>[0] = [
+    ...[...movedByOldParent].map(([oldParent, movedIds]) => ({
+      updateOne: {
+        filter: { _id: toObjectId(oldParent) },
+        update: { $pull: { childrenIds: { $in: movedIds } } },
+      },
+    })),
+    ...(newParentId
+      ? [
+          {
+            updateOne: {
+              filter: { _id: toObjectId(newParentId) },
+              update: { $addToSet: { childrenIds: { $each: plan.toMove.map(toObjectId) } } },
+            },
+          },
+        ]
+      : []),
+  ];
+  if (childrenOps.length > 0) {
+    await Technique.bulkWrite(childrenOps, { timestamps: false });
+  }
+
+  await rebuildTechniquePaths({ rootIds: plan.toMove });
+  return result;
 }
 
 export async function applyTechniqueEdit(
