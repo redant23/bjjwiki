@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -14,6 +14,7 @@ import { TagInput } from '@/components/ui/TagInput';
 import { SkillStatusControls } from '@/components/technique/SkillStatusControls';
 import { TechniqueParentPicker } from '@/components/ui/TechniqueParentPicker';
 import { getYoutubeEmbedUrl } from '@/lib/youtube';
+import { buildAutolinkIndex, remarkTechniqueLinks, type AutolinkTechnique } from '@/lib/technique-autolink';
 
 interface Technique {
   _id: string;
@@ -61,6 +62,7 @@ export default function TechniquePage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [parentName, setParentName] = useState('');
   const [parentPickerOpen, setParentPickerOpen] = useState(false);
+  const [allTechniques, setAllTechniques] = useState<AutolinkTechnique[]>([]);
   const [breadcrumbPath, setBreadcrumbPath] = useState<{ name: string; slug: string }[]>([]);
 
   // Edit form state
@@ -156,6 +158,18 @@ export default function TechniquePage() {
       fetchTechnique();
     }
   }, [currentSlug]);
+
+  useEffect(() => {
+    fetch('/api/techniques?fields=light')
+      .then((res) => res.json())
+      .then((data) => { if (data.success) setAllTechniques(data.data); })
+      .catch(() => {});
+  }, []);
+
+  const autolinkPlugins = useMemo(
+    () => [remarkTechniqueLinks(buildAutolinkIndex(allTechniques, technique?._id))],
+    [allTechniques, technique?._id]
+  );
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -715,6 +729,7 @@ export default function TechniquePage() {
             </div>
           ) : (
             <MarkdownContent
+              extraRemarkPlugins={autolinkPlugins}
               components={{
                 a: ({ href, children, ...rest }) =>
                   href && !href.startsWith('http') ? (

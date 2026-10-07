@@ -73,7 +73,7 @@ export async function GET(request: Request) {
 
     if (fields === 'light') {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      queryBuilder = queryBuilder.select('_id name slug parentId pathSlugs primaryRole type order') as any;
+      queryBuilder = queryBuilder.select('_id name aka slug parentId pathSlugs primaryRole type order') as any;
     }
 
     const techniques = await queryBuilder;
