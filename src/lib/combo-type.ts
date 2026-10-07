@@ -1,33 +1,35 @@
-// 콤보의 기/노기 구분. 콤보에는 유형이 저장되어 있지 않아 포함된 기술들의 유형에서 계산한다.
-// 의존성이 없어 DB 없이 검증할 수 있다.
+// 콤보의 기/노기 구분. 등록자가 고르는 "영상 복장"(gearType)을 그대로 쓴다.
+// 구성 기술의 유형에서 계산하지 않는다. 의존성이 없어 DB 없이 검증할 수 있다.
 
-export type ComboTypeFilter = 'all' | 'gi' | 'nogi';
+export type ComboGearType = 'gi' | 'nogi';
+export type ComboTypeFilter = 'all' | ComboGearType;
 
-export interface ComboTypeInfo {
-  /** 모든 기술을 도복을 입고 할 수 있다 (gi 또는 공용) */
-  gi: boolean;
-  /** 모든 기술을 도복 없이 할 수 있다 (nogi 또는 공용) */
-  nogi: boolean;
+export const COMBO_GEAR_TYPES: readonly ComboGearType[] = ['gi', 'nogi'];
+
+const GEAR_LABELS: Record<ComboGearType, string> = { gi: '기', nogi: '노기' };
+
+export function isComboGearType(value: unknown): value is ComboGearType {
+  return value === 'gi' || value === 'nogi';
 }
 
-export function comboTypeInfo(techniqueTypes: readonly string[]): ComboTypeInfo {
-  if (techniqueTypes.length === 0) return { gi: false, nogi: false };
-  return {
-    gi: techniqueTypes.every((t) => t === 'gi' || t === 'both'),
-    nogi: techniqueTypes.every((t) => t === 'nogi' || t === 'both'),
-  };
+/** 화면에 보일 라벨. gearType이 없거나 알 수 없는 값이면 "미지정". */
+export function comboGearLabel(gearType: unknown): string {
+  return isComboGearType(gearType) ? GEAR_LABELS[gearType] : '미지정';
 }
 
-/** 화면에 보일 라벨. 기 전용 기술과 노기 전용 기술이 섞이면 어느 쪽으로도 이어서 할 수 없어 "혼합". */
-export function comboTypeLabel(info: ComboTypeInfo): string {
-  if (info.gi && info.nogi) return '기/노기 공용';
-  if (info.gi) return '기';
-  if (info.nogi) return '노기';
-  return '기/노기 혼합';
+export function comboMatchesType(gearType: unknown, filter: ComboTypeFilter): boolean {
+  return filter === 'all' || gearType === filter;
 }
 
-export function comboMatchesType(info: ComboTypeInfo, filter: ComboTypeFilter): boolean {
-  if (filter === 'gi') return info.gi;
-  if (filter === 'nogi') return info.nogi;
-  return true;
+/**
+ * 마이그레이션용: 이름 말머리로 gearType을 추정한다.
+ * [기] → gi, [노기] → nogi, [기/노기](공용) → gi. 말머리가 없으면 null.
+ */
+export function gearTypeFromComboName(name: string): ComboGearType | null {
+  const match = /^\s*\[([^\]]+)\]/.exec(name);
+  if (!match) return null;
+  const tag = match[1].replace(/\s/g, '');
+  if (tag === '노기') return 'nogi';
+  if (tag === '기' || tag === '기/노기' || tag === '노기/기') return 'gi';
+  return null;
 }

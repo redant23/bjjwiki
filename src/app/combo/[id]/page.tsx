@@ -7,20 +7,21 @@ import Link from 'next/link';
 import { Edit, Save, X, Trash2, Bookmark, Upload } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { getYoutubeEmbedUrl } from '@/lib/youtube';
-import { comboTypeInfo, comboTypeLabel } from '@/lib/combo-type';
+import GearTypeSelect from '@/components/combo/GearTypeSelect';
+import { comboGearLabel, isComboGearType, type ComboGearType } from '@/lib/combo-type';
 
 interface ComboTechnique {
   _id: string;
   name: { ko: string; en?: string };
   slug: string;
   pathSlugs: string[];
-  type?: string;
 }
 
 interface ComboDetail {
   _id: string;
   name: string;
   techniques: ComboTechnique[];
+  gearType?: ComboGearType;
   videoUrl?: string;
   photoUrl?: string;
   createdBy: { _id: string; nickname: string };
@@ -46,7 +47,11 @@ export default function ComboDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const [editForm, setEditForm] = useState({ name: '', videoUrl: '' });
+  const [editForm, setEditForm] = useState<{ name: string; gearType: ComboGearType | ''; videoUrl: string }>({
+    name: '',
+    gearType: '',
+    videoUrl: '',
+  });
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
 
@@ -60,7 +65,11 @@ export default function ComboDetailPage() {
         const data = await res.json();
         if (data.success) {
           setCombo(data.data);
-          setEditForm({ name: data.data.name, videoUrl: data.data.videoUrl || '' });
+          setEditForm({
+            name: data.data.name,
+            gearType: isComboGearType(data.data.gearType) ? data.data.gearType : '',
+            videoUrl: data.data.videoUrl || '',
+          });
           setPreviewUrl(data.data.photoUrl || '');
         } else {
           setError(data.error || '콤보를 불러오지 못했습니다.');
@@ -99,7 +108,11 @@ export default function ComboDetailPage() {
   function handleEdit() {
     if (!combo) return;
     setError('');
-    setEditForm({ name: combo.name, videoUrl: combo.videoUrl || '' });
+    setEditForm({
+      name: combo.name,
+      gearType: combo.gearType ?? '',
+      videoUrl: combo.videoUrl || '',
+    });
     setPreviewUrl(combo.photoUrl || '');
     setPhotoFile(null);
     setIsEditing(true);
@@ -131,6 +144,10 @@ export default function ComboDetailPage() {
 
   async function handleSave() {
     if (!combo) return;
+    if (!editForm.gearType) {
+      setError('영상 복장(기/노기)을 선택해주세요.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -151,6 +168,7 @@ export default function ComboDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editForm.name,
+          gearType: editForm.gearType,
           videoUrl: editForm.videoUrl.trim() || undefined,
           photoUrl: photoRemoved ? '' : (photoUrl || undefined),
         }),
@@ -159,7 +177,13 @@ export default function ComboDetailPage() {
       if (data.success) {
         setCombo((prev) =>
           prev
-            ? { ...prev, name: data.data.name, videoUrl: data.data.videoUrl, photoUrl: data.data.photoUrl }
+            ? {
+                ...prev,
+                name: data.data.name,
+                gearType: data.data.gearType,
+                videoUrl: data.data.videoUrl,
+                photoUrl: data.data.photoUrl,
+              }
             : prev
         );
         setIsEditing(false);
@@ -241,7 +265,7 @@ export default function ComboDetailPage() {
 
       <p className="text-sm text-muted-foreground mb-6">
         by {combo.createdBy.nickname} ·{' '}
-        {comboTypeLabel(comboTypeInfo(combo.techniques.map((t) => t.type ?? '')))}
+        {comboGearLabel(combo.gearType)}
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-8">
@@ -262,6 +286,14 @@ export default function ComboDetailPage() {
 
       {isEditing ? (
         <div className="space-y-4 mb-8">
+          <div>
+            <label className="block text-sm font-medium mb-2">영상 복장</label>
+            <GearTypeSelect
+              value={editForm.gearType}
+              onChange={(gearType) => setEditForm((prev) => ({ ...prev, gearType }))}
+              disabled={saving}
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium mb-2">시연 영상 URL</label>
             <input

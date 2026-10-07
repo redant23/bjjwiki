@@ -4,6 +4,7 @@ import dbConnect from '@/lib/db';
 import { authOptions } from '@/lib/auth';
 import Combo from '@/models/Combo';
 import User from '@/models/User';
+import { isComboGearType } from '@/lib/combo-type';
 
 export async function GET(
   request: Request,
@@ -13,7 +14,7 @@ export async function GET(
   try {
     await dbConnect();
     const combo: any = await Combo.findById(params.id)
-      .populate('techniques', 'name slug pathSlugs type')
+      .populate('techniques', 'name slug pathSlugs')
       .populate('createdBy', 'nickname')
       .lean();
 
@@ -63,6 +64,15 @@ export async function PATCH(
         return NextResponse.json({ success: false, error: '이름은 비워둘 수 없습니다.' }, { status: 400 });
       }
       combo.name = body.name.trim();
+    }
+    if (body.gearType !== undefined) {
+      if (!isComboGearType(body.gearType)) {
+        return NextResponse.json(
+          { success: false, error: '영상 복장(기/노기)이 올바르지 않습니다.' },
+          { status: 400 }
+        );
+      }
+      combo.gearType = body.gearType;
     }
     if (body.videoUrl !== undefined) {
       combo.videoUrl = body.videoUrl || undefined;

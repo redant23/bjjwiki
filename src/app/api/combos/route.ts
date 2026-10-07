@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth';
 import Combo from '@/models/Combo';
 import Technique from '@/models/Technique';
 import User from '@/models/User';
+import { isComboGearType } from '@/lib/combo-type';
 
 export async function GET(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
 
     const combos: any[] = await Combo.find()
       .sort(sortOptions)
-      .populate('techniques', 'name slug pathSlugs type')
+      .populate('techniques', 'name slug pathSlugs')
       .populate('createdBy', 'nickname')
       .lean();
 
@@ -60,6 +61,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!isComboGearType(body.gearType)) {
+      return NextResponse.json(
+        { success: false, error: '영상 복장(기/노기)을 선택해주세요.' },
+        { status: 400 }
+      );
+    }
+
     await dbConnect();
 
     const uniqueTechniqueIds = [...new Set(techniqueIds)];
@@ -96,6 +104,7 @@ export async function POST(request: Request) {
     const combo = await Combo.create({
       name,
       techniques: techniqueObjectIds,
+      gearType: body.gearType,
       videoUrl: body.videoUrl || undefined,
       photoUrl: body.photoUrl || undefined,
       createdBy: session.user.id,

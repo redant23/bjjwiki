@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Search, X, ArrowUp, ArrowDown, Upload, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
+import GearTypeSelect from '@/components/combo/GearTypeSelect';
+import type { ComboGearType } from '@/lib/combo-type';
 
 interface SearchResult {
   _id: string;
@@ -30,6 +32,7 @@ export default function NewComboPage() {
   const [searching, setSearching] = useState(false);
   const [name, setName] = useState('');
   const [chain, setChain] = useState<ChainItem[]>([]);
+  const [gearType, setGearType] = useState<ComboGearType | ''>('');
   const [videoUrl, setVideoUrl] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -109,7 +112,7 @@ export default function NewComboPage() {
   }
 
   async function handleSubmit() {
-    if (chain.length < 2) return;
+    if (chain.length < 2 || !gearType) return;
 
     setSaving(true);
     setError('');
@@ -133,6 +136,7 @@ export default function NewComboPage() {
         body: JSON.stringify({
           name: name.trim() || undefined,
           techniques: chain.map((c) => c._id),
+          gearType,
           videoUrl: videoUrl.trim() || undefined,
           photoUrl: photoUrl || undefined,
         }),
@@ -250,6 +254,16 @@ export default function NewComboPage() {
         </div>
 
         <div>
+          <label className="block text-sm font-medium mb-2">영상 복장</label>
+          <GearTypeSelect value={gearType} onChange={setGearType} disabled={saving} />
+          {!gearType && (
+            <p className="text-sm text-muted-foreground mt-2">
+              시연 영상에서 입은 복장을 선택해주세요.
+            </p>
+          )}
+        </div>
+
+        <div>
           <label className="block text-sm font-medium mb-2">시연 영상 URL (선택)</label>
           <input
             type="text"
@@ -296,7 +310,7 @@ export default function NewComboPage() {
           </Link>
           <button
             onClick={handleSubmit}
-            disabled={chain.length < 2 || saving}
+            disabled={chain.length < 2 || !gearType || saving}
             className="flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
             {saving ? '등록 중...' : '등록'}
