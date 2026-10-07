@@ -4,7 +4,7 @@ import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import User from '@/models/User';
 import { requireAdmin } from '@/lib/auth';
-import { applyTechniqueEdit } from '@/lib/technique-service';
+import { applyTechniqueEdit, rebuildTechniquePaths } from '@/lib/technique-service';
 
 export async function GET(
   request: Request,
@@ -16,9 +16,7 @@ export async function GET(
     const technique = await Technique.findById(params.id)
       .populate('parentId', 'name slug')
       .populate('childrenIds', 'name slug type primaryRole')
-      .populate('sweepsFromHere', 'name slug')
-      .populate('submissionsFromHere', 'name slug')
-      .populate('escapesFromHere', 'name slug')
+      .populate('relatedGroups.techniques', 'name slug pathSlugs')
       .populate('createdBy', 'nickname')
       .populate('lastEditedBy', 'nickname');
 
@@ -47,8 +45,11 @@ export async function PUT(
     const { session, error: authError } = await requireAdmin();
     if (authError) return authError;
 
-    const body = await request.json();
-    const technique = await applyTechniqueEdit(params.id, body, session!.user.id);
+    // silent는 저장 옵션이지 기술 필드가 아니므로 payload에서 분리한다.
+    const { silent, ...payload } = await request.json();
+    const technique = await applyTechniqueEdit(params.id, payload, session!.user.id, {
+      silent: silent === true,
+    });
 
     if (!technique) {
       return NextResponse.json(
@@ -101,11 +102,16 @@ export async function DELETE(
     if (technique.childrenIds && technique.childrenIds.length > 0) {
       await Technique.updateMany(
         { _id: { $in: technique.childrenIds } },
-        { $set: { parentId: null, level: 1, pathSlugs: [] } }
+        { $set: { parentId: null } }
       );
     }
 
     await technique.deleteOne();
+
+    // 고아가 된 자식들의 하위 트리 전체 pathSlugs/level을 다시 계산
+    if (technique.childrenIds && technique.childrenIds.length > 0) {
+      await rebuildTechniquePaths({ rootIds: technique.childrenIds.map(String) });
+    }
 
     // Deleting a technique otherwise leaves it as an orphaned ref inside
     // every user's mySkills — invisible on read (filtered out), but still

@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface ITechnique extends Document {
   // 1. Basic Identification
   slug: string; // Unique, auto-generated from name
+  previousSlugs: string[]; // slug를 바꾼 적이 있으면 옛 slug들 (옛 주소를 새 주소로 보내기 위함)
 
   // 2. Name / Description (Multi-language)
   name: {
@@ -49,9 +50,8 @@ export interface ITechnique extends Document {
   pathSlugs: string[]; // e.g., ['guard', 'open-guard', 'x-guard']
 
   // 6. Chaining
-  sweepsFromHere: mongoose.Types.ObjectId[];
-  submissionsFromHere: mongoose.Types.ObjectId[];
-  escapesFromHere: mongoose.Types.ObjectId[];
+  // 작성자가 제목을 짓고 그 아래에 기술들을 골라 넣는 연결 목록 (예: "방어법", "연습 드릴")
+  relatedGroups: { title: string; techniques: mongoose.Types.ObjectId[] }[];
 
   // 7. Media
   thumbnailUrl?: string;
@@ -83,6 +83,7 @@ const TechniqueSchema: Schema = new Schema(
   {
     // 1. Basic Identification
     slug: { type: String, required: true, unique: true, index: true },
+    previousSlugs: { type: [String], default: [], index: true },
 
     // 2. Name / Description
     name: {
@@ -143,10 +144,14 @@ const TechniqueSchema: Schema = new Schema(
     level: { type: Number, default: 1, index: true },
     pathSlugs: { type: [String], default: [], index: true },
 
-    // 6. Chaining
-    sweepsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
-    submissionsFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
-    escapesFromHere: [{ type: Schema.Types.ObjectId, ref: 'Technique', index: true }],
+    // 6. Chaining ("이어지는 기술"은 콤보 체인에서 계산하므로 저장하지 않는다)
+    relatedGroups: [
+      {
+        _id: false,
+        title: { type: String, required: true, trim: true, maxlength: 30 },
+        techniques: [{ type: Schema.Types.ObjectId, ref: 'Technique' }],
+      },
+    ],
 
     // 7. Media
     thumbnailUrl: { type: String },

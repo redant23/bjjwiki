@@ -87,12 +87,32 @@ export default function AdminDashboard() {
             Logged in as {session?.user?.email}
           </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: '/' })}
-          className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
-        >
-          Logout
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Link
+            href="/admin/reorganize"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            분류 정리
+          </Link>
+          <Link
+            href="/admin/announcements"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            공지 관리
+          </Link>
+          <Link
+            href="/admin/quality"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            미완성 기술
+          </Link>
+          <button
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="rounded-md bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground hover:bg-secondary/80"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className="space-y-6">

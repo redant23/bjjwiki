@@ -12,7 +12,15 @@ export const FIELD_LABELS: Record<string, string> = {
   videos: '영상',
   images: '이미지',
   thumbnailUrl: '썸네일',
+  relatedGroups: '연결 기술 목록',
 };
+
+// 제목이 있는 연결 목록을 "제목(기술 N개), ..." 형태로 요약한다. (요청 payload에는 기술 id만 있어 개수만 표시)
+function describeRelatedGroups(groups: unknown[]): string {
+  return (groups as Array<{ title?: string; techniques?: unknown[] }>)
+    .map((g) => `${g.title ?? ''}(기술 ${g.techniques?.length ?? 0}개)`)
+    .join(', ');
+}
 
 export const TYPE_LABELS: Record<string, string> = {
   gi: '기 (도복)',
@@ -66,6 +74,10 @@ export function summarizeValue(key: string, value: unknown): string {
 
   if (key === 'isCorePosition') {
     return value ? '예' : '아니오';
+  }
+
+  if (key === 'relatedGroups' && Array.isArray(value)) {
+    return value.length > 0 ? truncate(describeRelatedGroups(value)) : '(없음)';
   }
 
   if (typeof value === 'string') return truncate(value);
@@ -143,6 +155,7 @@ export function formatFieldValue(key: string, value: unknown): string {
     return (value as Array<{ url: string }>).map((v) => v.url).join('\n');
   }
   if (key === 'parentId') return value ? String(value) : '(최상위 카테고리)';
+  if (key === 'relatedGroups' && Array.isArray(value)) return describeRelatedGroups(value);
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   return JSON.stringify(value, null, 2);

@@ -7,12 +7,14 @@ import Link from 'next/link';
 import { Edit, Save, X, Trash2, Bookmark, Upload } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { getYoutubeEmbedUrl } from '@/lib/youtube';
+import { comboTypeInfo, comboTypeLabel } from '@/lib/combo-type';
 
 interface ComboTechnique {
   _id: string;
   name: { ko: string; en?: string };
   slug: string;
   pathSlugs: string[];
+  type?: string;
 }
 
 interface ComboDetail {
@@ -237,7 +239,10 @@ export default function ComboDetailPage() {
         )}
       </div>
 
-      <p className="text-sm text-muted-foreground mb-6">by {combo.createdBy.nickname}</p>
+      <p className="text-sm text-muted-foreground mb-6">
+        by {combo.createdBy.nickname} ·{' '}
+        {comboTypeLabel(comboTypeInfo(combo.techniques.map((t) => t.type ?? '')))}
+      </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-8">
         {combo.techniques.map((technique, index) => (

@@ -13,7 +13,7 @@ export async function GET(
   try {
     await dbConnect();
     const combo: any = await Combo.findById(params.id)
-      .populate('techniques', 'name slug pathSlugs')
+      .populate('techniques', 'name slug pathSlugs type')
       .populate('createdBy', 'nickname')
       .lean();
 

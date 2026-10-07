@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:tree": "node --experimental-strip-types scripts/verify-technique-tree.ts",
+    "verify": "npm run verify:tree && node --experimental-strip-types scripts/verify-technique-form.ts && node --experimental-strip-types scripts/verify-technique-quality.ts && node --experimental-strip-types scripts/verify-technique-similarity.ts && node --experimental-strip-types scripts/verify-technique-order.ts && node --experimental-strip-types scripts/verify-technique-cards.ts && node --experimental-strip-types scripts/verify-home-picks.ts && node --experimental-strip-types scripts/verify-announcement.ts && node --experimental-strip-types scripts/verify-technique-browse.ts && node --experimental-strip-types scripts/verify-combo-type.ts && node --experimental-strip-types scripts/verify-technique-url.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
