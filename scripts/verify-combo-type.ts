@@ -1,28 +1,43 @@
-// 콤보 기/노기 판정 검증 (DB 불필요).
+// 콤보 gearType(기/노기) 판정·필터·마이그레이션 매핑 검증 (DB 불필요).
 import assert from 'node:assert/strict';
-import { comboMatchesType, comboTypeInfo, comboTypeLabel } from '../src/lib/combo-type.ts';
+import {
+  comboGearLabel,
+  comboMatchesType,
+  gearTypeFromComboName,
+  isComboGearType,
+} from '../src/lib/combo-type.ts';
 
-const info = (types: string[]) => comboTypeInfo(types);
+// 값 검증
+assert.equal(isComboGearType('gi'), true);
+assert.equal(isComboGearType('nogi'), true);
+assert.equal(isComboGearType('both'), false);
+assert.equal(isComboGearType(undefined), false);
 
-// 전부 공용 → 어느 쪽 필터에도 포함
-assert.deepEqual(info(['both', 'both']), { gi: true, nogi: true });
-assert.equal(comboTypeLabel(info(['both', 'both'])), '기/노기 공용');
-// 기 전용이 하나라도 있으면 노기에서는 못 한다
-assert.deepEqual(info(['gi', 'both']), { gi: true, nogi: false });
-assert.equal(comboTypeLabel(info(['gi', 'both'])), '기');
-assert.deepEqual(info(['nogi', 'both']), { gi: false, nogi: true });
-assert.equal(comboTypeLabel(info(['nogi'])), '노기');
-// 기 전용 + 노기 전용 → 어느 쪽도 아님
-assert.deepEqual(info(['gi', 'nogi']), { gi: false, nogi: false });
-assert.equal(comboTypeLabel(info(['gi', 'nogi'])), '기/노기 혼합');
-// 알 수 없는 값/빈 목록은 어느 쪽으로도 단정하지 않는다
-assert.deepEqual(info(['both', 'weird']), { gi: false, nogi: false });
-assert.deepEqual(info([]), { gi: false, nogi: false });
+// 라벨
+assert.equal(comboGearLabel('gi'), '기');
+assert.equal(comboGearLabel('nogi'), '노기');
+assert.equal(comboGearLabel(undefined), '미지정');
+assert.equal(comboGearLabel('weird'), '미지정');
 
-// 필터
-assert.equal(comboMatchesType(info(['gi', 'both']), 'gi'), true);
-assert.equal(comboMatchesType(info(['gi', 'both']), 'nogi'), false);
-assert.equal(comboMatchesType(info(['gi', 'nogi']), 'all'), true); // 전체는 혼합도 보인다
-assert.equal(comboMatchesType(info(['gi', 'nogi']), 'gi'), false);
+// 필터: 구성 기술이 아니라 gearType만 본다
+assert.equal(comboMatchesType('gi', 'gi'), true);
+assert.equal(comboMatchesType('gi', 'nogi'), false);
+assert.equal(comboMatchesType('nogi', 'nogi'), true);
+assert.equal(comboMatchesType('nogi', 'gi'), false);
+assert.equal(comboMatchesType('gi', 'all'), true);
+assert.equal(comboMatchesType(undefined, 'all'), true); // 전체는 미지정도 보인다
+assert.equal(comboMatchesType(undefined, 'gi'), false);
+assert.equal(comboMatchesType(undefined, 'nogi'), false);
+
+// 마이그레이션: 이름 말머리 → gearType
+assert.equal(gearTypeFromComboName('[기] 스파이더 가드 라쏘 암바 연계'), 'gi');
+assert.equal(gearTypeFromComboName('[노기] 암드래그 백 테이크 연계'), 'nogi');
+assert.equal(gearTypeFromComboName('[기/노기] 하프 가드 딥 하프 스윕 연계'), 'gi'); // 공용은 gi
+assert.equal(gearTypeFromComboName('[ 노기 ] 공백 허용'), 'nogi');
+assert.equal(gearTypeFromComboName('  [기] 앞 공백'), 'gi');
+assert.equal(gearTypeFromComboName('말머리 없는 콤보'), null);
+assert.equal(gearTypeFromComboName('콤보 [노기] 중간'), null); // 맨 앞 말머리만 인정
+assert.equal(gearTypeFromComboName('[기타] 모르는 말머리'), null);
+assert.equal(gearTypeFromComboName(''), null);
 
 console.log('combo-type: all checks passed');

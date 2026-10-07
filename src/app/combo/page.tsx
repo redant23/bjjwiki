@@ -6,20 +6,20 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Bookmark, Layers, Plus, Video } from 'lucide-react';
 import { getYoutubeThumbnailUrl } from '@/lib/youtube';
-import { comboMatchesType, comboTypeInfo, comboTypeLabel, type ComboTypeFilter } from '@/lib/combo-type';
+import { comboGearLabel, comboMatchesType, type ComboGearType, type ComboTypeFilter } from '@/lib/combo-type';
 
 interface ComboTechnique {
   _id: string;
   name: { ko: string; en?: string };
   slug: string;
   pathSlugs: string[];
-  type?: string;
 }
 
 interface ComboListItem {
   _id: string;
   name: string;
   techniques: ComboTechnique[];
+  gearType?: ComboGearType;
   videoUrl?: string;
   photoUrl?: string;
   createdBy: { _id: string; nickname: string };
@@ -110,9 +110,7 @@ export default function ComboListPage() {
   }
 
   const visibleCombos = combos
-    ? combos.filter((c) =>
-        comboMatchesType(comboTypeInfo(c.techniques.map((t) => t.type ?? '')), typeFilter)
-      )
+    ? combos.filter((c) => comboMatchesType(c.gearType, typeFilter))
     : null;
 
   function handleRegisterClick() {
@@ -186,7 +184,7 @@ export default function ComboListPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {visibleCombos.map((combo) => {
             const thumbnail = comboThumbnail(combo);
-            const typeLabel = comboTypeLabel(comboTypeInfo(combo.techniques.map((t) => t.type ?? '')));
+            const typeLabel = comboGearLabel(combo.gearType);
             return (
               // 카드 전체를 누르면 콤보 상세로 가고(제목 링크를 카드 크기로 늘림), 체인의 기술 이름과
               // 저장 버튼은 그 위(z-10)에 올려 각각 따로 눌린다. 링크 안에 링크를 넣지 않기 위한 구조.
