@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkBreaks from 'remark-breaks';
+import type { PluggableList } from 'unified';
 import { cn } from '@/lib/utils';
 
 interface MdNode {
@@ -64,12 +65,13 @@ type MarkdownContentProps = {
   children: string;
   components?: ComponentProps<typeof ReactMarkdown>['components'];
   className?: string;
+  extraRemarkPlugins?: PluggableList;
 };
 
-export function MarkdownContent({ children, components, className }: MarkdownContentProps) {
+export function MarkdownContent({ children, components, className, extraRemarkPlugins = [] }: MarkdownContentProps) {
   return (
     <div className={cn('md-content', className)}>
-      <ReactMarkdown remarkPlugins={[remarkBreaks, remarkSections]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkBreaks, remarkSections, ...extraRemarkPlugins]} components={components}>
         {children}
       </ReactMarkdown>
     </div>
