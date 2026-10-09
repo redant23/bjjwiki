@@ -48,7 +48,8 @@ export async function getAdminUsers(limit: number, page: number) {
   await dbConnect();
   const [docs, total] = await Promise.all([
     User.find()
-      .sort({ createdAt: -1 })
+      // 오래된 문서는 createdAt이 없을 수 있어 ObjectId(생성 시각 포함) 역순으로 정렬한다.
+      .sort({ _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       // 민감 필드(password, googleId 값 등)는 가져오지 않는다. 가입 방식은 googleId 존재 여부로만 판단.
@@ -63,7 +64,7 @@ export async function getAdminUsers(limit: number, page: number) {
     email: u.email,
     role: u.role,
     method: u.googleId ? 'google' : 'email',
-    createdAt: u.createdAt.toISOString(),
+    createdAt: (u.createdAt ?? u._id.getTimestamp()).toISOString(),
   }));
   return { users, total, page, limit };
 }
