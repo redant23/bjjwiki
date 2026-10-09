@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
@@ -7,6 +8,7 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
+import { Analytics } from "@/components/analytics/Analytics";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -66,12 +68,18 @@ export default async function RootLayout({
               <main className="relative w-full min-w-0 md:ml-64">
                 <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:py-10 md:pb-10">
                   {children}
+                  <footer className="mt-12 border-t pt-4 text-xs text-muted-foreground">
+                    <Link href="/privacy" className="hover:text-foreground hover:underline">
+                      개인정보처리방침
+                    </Link>
+                  </footer>
                 </div>
               </main>
             </div>
             <MobileBottomNav initialTree={tree} />
           </div>
         </Providers>
+        <Analytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
       </body>
     </html>
   );
