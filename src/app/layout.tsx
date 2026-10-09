@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
 };
 
-import { getTechniqueTree } from "@/lib/technique-service";
+import { getTechniqueTree, getRecentlyUpdatedTechniques } from "@/lib/technique-service";
 import { getActiveAnnouncements } from "@/lib/announcement-service";
 
 export default async function RootLayout({
@@ -35,10 +35,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [tree, announcements] = await Promise.all([
+  const [tree, notices, recentlyUpdated] = await Promise.all([
     getTechniqueTree(),
     getActiveAnnouncements(),
+    getRecentlyUpdatedTechniques(),
   ]);
+  // 관리자 공지를 앞에, 최근 업데이트된 기술 안내를 뒤에 이어 붙인다.
+  const announcements = [
+    ...notices,
+    ...recentlyUpdated.map((t) => ({
+      _id: `updated-${t._id}`,
+      text: `${t.name} 기술이 업데이트되었습니다.`,
+      href: t.href,
+    })),
+  ];
 
   return (
     <html lang="ko" className="scroll-smooth">

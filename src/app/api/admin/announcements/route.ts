@@ -44,7 +44,7 @@ export async function POST(request: Request) {
 
     await dbConnect();
     const created = await Announcement.create({ ...parsed.value, createdBy: session!.user.id });
-    revalidateTag('announcements', 'max');
+    revalidateTag('announcements', { expire: 0 });
 
     return NextResponse.json({ success: true, data: { _id: created._id.toString() } }, { status: 201 });
   } catch (error) {

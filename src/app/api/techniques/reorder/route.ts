@@ -80,7 +80,7 @@ export async function PUT(request: Request) {
       await Technique.bulkWrite(renumberOps, { timestamps: false });
     }
 
-    revalidateTag('technique-tree', 'max');
+    revalidateTag('technique-tree', { expire: 0 });
 
     return NextResponse.json({ success: true, renumbered: renumberOps.length });
   } catch (error) {

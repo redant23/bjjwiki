@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     const result = await rebuildTechniquePaths({ dryRun });
 
     if (!dryRun && result.updated > 0) {
-      revalidateTag('technique-tree', 'max');
+      revalidateTag('technique-tree', { expire: 0 });
     }
 
     return NextResponse.json({ success: true, dryRun, data: result });

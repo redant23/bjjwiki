@@ -16,6 +16,7 @@ import {
   normalizeDisplayText,
   SimilarityInput,
 } from '@/lib/technique-similarity';
+import { RECENT_UPDATE_WINDOW_DAYS } from '@/lib/recent-update';
 import { isValidSlug, slugify } from '@/lib/technique-slug';
 import { redirectTargetFor, safeDecodeSegment } from '@/lib/technique-url';
 
@@ -609,3 +610,35 @@ export async function getTechniqueRedirect(requested: string[]): Promise<string 
 
   return redirectTargetFor(requested, { slug: target.slug, pathSlugs: target.pathSlugs });
 }
+
+export interface RecentlyUpdatedTechnique {
+  _id: string;
+  name: string;
+  href: string;
+}
+
+// 홈 공지 바의 "OO 기술이 업데이트되었습니다" 자동 안내용. 기술 트리와 같은 태그를 써서
+// 기술이 수정되면 함께 갱신되고, 최근 기준 기간은 시간이 지나며 바뀌므로 10분마다도 갱신한다.
+export const getRecentlyUpdatedTechniques = unstable_cache(
+  async (): Promise<RecentlyUpdatedTechnique[]> => {
+    await dbConnect();
+    const since = new Date(Date.now() - RECENT_UPDATE_WINDOW_DAYS * 24 * 60 * 60 * 1000);
+
+    const techniques = await Technique.find({
+      status: 'published',
+      contentUpdatedAt: { $gte: since },
+    })
+      .select('_id name slug pathSlugs contentUpdatedAt')
+      .sort({ contentUpdatedAt: -1 })
+      .limit(10)
+      .lean();
+
+    return techniques.map((tech) => ({
+      _id: tech._id.toString(),
+      name: tech.name.ko,
+      href: `/technique/${[...(tech.pathSlugs || []), tech.slug].join('/')}`,
+    }));
+  },
+  ['recently-updated-techniques'],
+  { revalidate: 600, tags: ['technique-tree'] }
+);

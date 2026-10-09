@@ -46,7 +46,7 @@ export async function POST(
       }, techniqueRequest.submittedBy.toString());
       techniqueRequest.targetTechniqueId = created._id as mongoose.Types.ObjectId;
 
-      revalidateTag('technique-tree', 'max');
+      revalidateTag('technique-tree', { expire: 0 });
     } else {
       const targetId = techniqueRequest.targetTechniqueId?.toString();
       if (!targetId) {
@@ -91,7 +91,7 @@ export async function POST(
         );
       }
 
-      revalidateTag('technique-tree', 'max');
+      revalidateTag('technique-tree', { expire: 0 });
     }
 
     techniqueRequest.status = 'approved';
