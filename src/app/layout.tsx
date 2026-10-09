@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Providers } from "@/components/providers";
 import { AnnouncementTicker } from "@/components/home/AnnouncementTicker";
 import { Analytics } from "@/components/analytics/Analytics";
+import { VercelAnalytics } from "@/components/analytics/VercelAnalytics";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -80,6 +81,7 @@ export default async function RootLayout({
           </div>
         </Providers>
         <Analytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+        <VercelAnalytics />
       </body>
     </html>
   );
