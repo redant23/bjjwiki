@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         })),
         { timestamps: false }
       );
-      revalidateTag('technique-tree', 'max');
+      revalidateTag('technique-tree', { expire: 0 });
     }
 
     return NextResponse.json({

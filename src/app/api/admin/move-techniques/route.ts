@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     if (!dryRun && result.moved > 0) {
-      revalidateTag('technique-tree', 'max');
+      revalidateTag('technique-tree', { expire: 0 });
     }
     return NextResponse.json({ success: true, data: result });
   } catch (error) {

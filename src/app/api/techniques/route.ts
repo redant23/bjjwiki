@@ -110,7 +110,9 @@ export async function POST(request: Request) {
       status: body.status || 'draft',
     }, session!.user.id);
 
-    revalidateTag('technique-tree', 'max');
+    // 'max'는 stale-while-revalidate라 직후의 router.refresh()가 옛 트리(사이드바
+    // 목록·기술 개수)를 그대로 받는다. 등록 직후 바로 반영되도록 즉시 만료시킨다.
+    revalidateTag('technique-tree', { expire: 0 });
 
     return NextResponse.json({ success: true, data: technique }, { status: 201 });
   } catch (error: unknown) {

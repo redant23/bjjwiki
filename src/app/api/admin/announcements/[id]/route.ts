@@ -31,7 +31,7 @@ export async function PATCH(
     if (!updated) {
       return NextResponse.json({ success: false, error: 'Announcement not found' }, { status: 404 });
     }
-    revalidateTag('announcements', 'max');
+    revalidateTag('announcements', { expire: 0 });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -58,7 +58,7 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Announcement not found' }, { status: 404 });
     }
-    revalidateTag('announcements', 'max');
+    revalidateTag('announcements', { expire: 0 });
 
     return NextResponse.json({ success: true });
   } catch (error) {

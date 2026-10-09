@@ -15,10 +15,32 @@ export function getYoutubeVideoId(url: string): string | null {
   return null;
 }
 
-/** 다양한 유튜브 URL 형식(watch, youtu.be, shorts, embed)을 임베드용 URL로 정규화한다. */
+/**
+ * 링크의 t 또는 start 값을 초 단위로 읽는다. 470, 470s, 1h2m3s 형식을 모두 처리하며
+ * 쿼리(?t=)와 해시(#t=) 어디에 있어도 된다. 없거나 0이면 null.
+ */
+export function getYoutubeStartSeconds(url: string): number | null {
+  const match = url.match(/[?&#](?:t|start)=([^&#]+)/);
+  if (!match) return null;
+  const value = match[1].toLowerCase();
+
+  let seconds = 0;
+  if (/^\d+$/.test(value)) {
+    seconds = Number(value);
+  } else {
+    const hms = value.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+    if (!hms) return null;
+    seconds = Number(hms[1] ?? 0) * 3600 + Number(hms[2] ?? 0) * 60 + Number(hms[3] ?? 0);
+  }
+  return seconds > 0 ? seconds : null;
+}
+
+/** 다양한 유튜브 URL 형식(watch, youtu.be, shorts, embed)을 임베드용 URL로 정규화한다. 시작 시간(t/start)은 ?start=초 로 보존한다. */
 export function getYoutubeEmbedUrl(url: string): string {
   const id = getYoutubeVideoId(url);
-  return id ? `https://www.youtube.com/embed/${id}` : url;
+  if (!id) return url;
+  const start = getYoutubeStartSeconds(url);
+  return `https://www.youtube.com/embed/${id}${start ? `?start=${start}` : ''}`;
 }
 
 /**

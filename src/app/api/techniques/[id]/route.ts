@@ -58,7 +58,7 @@ export async function PUT(
       );
     }
 
-    revalidateTag('technique-tree', 'max');
+    revalidateTag('technique-tree', { expire: 0 });
 
     return NextResponse.json({ success: true, data: technique });
   } catch (error) {
@@ -121,7 +121,7 @@ export async function DELETE(
       { $pull: { mySkills: { technique: id } } }
     );
 
-    revalidateTag('technique-tree', 'max');
+    revalidateTag('technique-tree', { expire: 0 });
 
     return NextResponse.json({ success: true, data: {} });
   } catch (error) {
