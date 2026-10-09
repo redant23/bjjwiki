@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Gmarket";
+        src: url("fonts/GmarketSansMedium.otf") format("opentype");
+        font-weight: 500;
+      }
+      @font-face {
+        font-family: "Gmarket";
+        src: url("fonts/GmarketSansBold.otf") format("opentype");
+        font-weight: 700;
+      }
+      :root {
+        --bg: #09090b;
+        --pink: #ff859b;
+        --pink-deep: #e0476a;
+        --white: #fafafa;
+        --muted: #a1a1aa;
+        --chip-bg: rgba(24, 24, 27, 0.82);
+        --chip-line: rgba(255, 133, 155, 0.45);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--bg);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        font-family: "Gmarket", sans-serif;
+        color: var(--white);
+      }
+
+      /* ---------- background photo ---------- */
+      #bg {
+        position: absolute;
+        inset: 0;
+      }
+      #bg-photo-wrap {
+        position: absolute;
+        inset: 0;
+      }
+      #bg-photo {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: 50% 45%;
+        filter: grayscale(0.6) brightness(0.55) contrast(1.1);
+      }
+      #bg-tint {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse at 50% 55%, rgba(255, 133, 155, 0.18), transparent 60%),
+          linear-gradient(180deg, rgba(9, 9, 11, 0.55) 0%, rgba(9, 9, 11, 0.78) 60%, rgba(9, 9, 11, 0.95) 100%);
+      }
+      #bg-dim {
+        position: absolute;
+        inset: 0;
+        background: var(--bg);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+      }
+      .scene-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        padding: 120px 160px;
+        gap: 28px;
+      }
+
+      /* ---------- S1 kinetic words ---------- */
+      #s1-stack {
+        position: relative;
+        width: 1400px;
+        height: 260px;
+      }
+      .s1-word {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 210px;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        color: var(--white);
+      }
+      .s1-word .dot {
+        color: var(--pink);
+      }
+      #s1-bar {
+        width: 220px;
+        height: 10px;
+        border-radius: 5px;
+        background: var(--pink);
+      }
+
+      /* ---------- S2 count ---------- */
+      #s2-kicker {
+        font-weight: 500;
+        font-size: 48px;
+        color: var(--muted);
+        letter-spacing: -0.01em;
+      }
+      #s2-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 28px;
+      }
+      #s2-num {
+        display: flex;
+        height: 300px;
+        overflow: hidden;
+        font-weight: 700;
+        font-size: 300px;
+        line-height: 300px;
+        letter-spacing: -0.05em;
+        color: var(--pink);
+        text-shadow: 0 0 60px rgba(255, 133, 155, 0.45);
+      }
+      .digit {
+        display: block;
+        width: 0.62em;
+        height: 300px;
+        overflow: hidden;
+      }
+      .strip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .strip span {
+        display: block;
+        height: 300px;
+      }
+      #s2-unit {
+        font-weight: 700;
+        font-size: 110px;
+        line-height: 1;
+        padding-bottom: 40px;
+      }
+      #s2-sub {
+        font-weight: 700;
+        font-size: 72px;
+        letter-spacing: -0.02em;
+      }
+      #s2-chips {
+        display: flex;
+        gap: 18px;
+        margin-top: 24px;
+      }
+      .chip {
+        padding: 18px 34px;
+        border-radius: 999px;
+        border: 2px solid var(--chip-line);
+        background: var(--chip-bg);
+        font-weight: 500;
+        font-size: 34px;
+        color: var(--white);
+        white-space: nowrap;
+      }
+
+      /* ---------- S3 combo chain ---------- */
+      #s3-title {
+        font-weight: 700;
+        font-size: 84px;
+        letter-spacing: -0.03em;
+      }
+      #s3-title em {
+        font-style: normal;
+        color: var(--pink);
+      }
+      #s3-chain {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-top: 40px;
+      }
+      .node {
+        padding: 30px 46px;
+        border-radius: 22px;
+        border: 3px solid var(--chip-line);
+        background: var(--chip-bg);
+        font-weight: 700;
+        font-size: 46px;
+        white-space: nowrap;
+      }
+      .node.final {
+        border-color: var(--pink);
+        background: var(--pink);
+        color: var(--bg);
+      }
+      .link {
+        width: 120px;
+        height: 6px;
+        background: var(--pink);
+        border-radius: 3px;
+      }
+      #s3-caption {
+        font-weight: 500;
+        font-size: 36px;
+        color: var(--muted);
+        margin-top: 12px;
+      }
+
+      /* ---------- S4 lockup ---------- */
+      #s4-logo-wrap {
+        width: 1180px;
+      }
+      #s4-logo {
+        display: block;
+        width: 100%;
+        height: auto;
+        filter: brightness(0) invert(1) drop-shadow(0 0 40px rgba(255, 133, 155, 0.35));
+      }
+      #s4-tag {
+        font-weight: 700;
+        font-size: 58px;
+        letter-spacing: -0.02em;
+        margin-top: 24px;
+      }
+      #s4-url {
+        margin-top: 18px;
+        padding: 20px 52px;
+        border-radius: 999px;
+        background: var(--pink);
+        color: var(--bg);
+        font-weight: 700;
+        font-size: 44px;
+        letter-spacing: 0.01em;
+      }
+
+      /* ---------- sweep ---------- */
+      #sweep {
+        position: absolute;
+        top: -20%;
+        left: 0;
+        width: 520px;
+        height: 140%;
+        background: linear-gradient(90deg, transparent, rgba(255, 133, 155, 0.55), transparent);
+        filter: blur(30px);
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-199x" id="root" data-composition-id="main" data-start="0" data-duration="10" data-width="1920" data-height="1080">
+      <!-- background (full duration) -->
+      <div data-hf-id="hf-pf0e" id="bg" class="clip" data-start="0" data-duration="10" data-track-index="0">
+        <div data-hf-id="hf-sux4" id="bg-photo-wrap"><img data-hf-id="hf-munf" id="bg-photo" src="assets/hero.jpg" alt=""></div>
+        <div data-hf-id="hf-ny52" id="bg-tint"></div>
+        <div data-hf-id="hf-mlit" id="bg-dim"></div>
+      </div>
+
+      <!-- S1: kinetic words -->
+      <div data-hf-id="hf-kn28" id="s1" class="scene clip" data-start="0" data-duration="2.5" data-track-index="1">
+        <div data-hf-id="hf-cn5c" class="scene-content">
+          <div data-hf-id="hf-pa9u" id="s1-stack">
+            <div data-hf-id="hf-asbj" class="s1-word" id="w1">가드<span data-hf-id="hf-6jgg" class="dot">.</span></div>
+            <div data-hf-id="hf-essc" class="s1-word" id="w2">패스<span data-hf-id="hf-3zzs" class="dot">.</span></div>
+            <div data-hf-id="hf-vjyh" class="s1-word" id="w3">서브미션<span data-hf-id="hf-2t2p" class="dot">.</span></div>
+          </div>
+          <div data-hf-id="hf-b8lh" id="s1-bar"></div>
+        </div>
+      </div>
+
+      <!-- S2: 227 count -->
+      <div data-hf-id="hf-jnxo" id="s2" class="scene clip" data-start="2.5" data-duration="2.9" data-track-index="1">
+        <div data-hf-id="hf-o0eg" class="scene-content">
+          <div data-hf-id="hf-acbs" id="s2-kicker">지금 오쓰그라운드에는</div>
+          <div data-hf-id="hf-4uix" id="s2-row">
+            <div data-hf-id="hf-sxcp" id="s2-num">
+              <div data-hf-id="hf-rdo7" class="digit"><div data-hf-id="hf-m3p9" class="strip" id="d0" data-layout-allow-overflow="true"></div></div>
+              <div data-hf-id="hf-84xj" class="digit"><div data-hf-id="hf-lc1g" class="strip" id="d1" data-layout-allow-overflow="true"></div></div>
+              <div data-hf-id="hf-7qmi" class="digit"><div data-hf-id="hf-tzxb" class="strip" id="d2" data-layout-allow-overflow="true"></div></div>
+            </div>
+            <div data-hf-id="hf-bhk9" id="s2-unit">개의</div>
+          </div>
+          <div data-hf-id="hf-z4c5" id="s2-sub">주짓수 기술이 있습니다</div>
+          <div data-hf-id="hf-0wh8" id="s2-chips">
+            <div data-hf-id="hf-0lk2" class="chip">가드</div>
+            <div data-hf-id="hf-qodm" class="chip">가드 패스</div>
+            <div data-hf-id="hf-xndd" class="chip">스윕</div>
+            <div data-hf-id="hf-rklq" class="chip">서브미션</div>
+            <div data-hf-id="hf-m95q" class="chip">테이크다운</div>
+            <div data-hf-id="hf-fpxm" class="chip">이스케이프</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- S3: combo chain -->
+      <div data-hf-id="hf-hjpm" id="s3" class="scene clip" data-start="5.4" data-duration="2.4" data-track-index="1">
+        <div data-hf-id="hf-mthd" class="scene-content">
+          <div data-hf-id="hf-th1y" id="s3-title">기술과 기술을 <em data-hf-id="hf-tuq7">연결</em>하다</div>
+          <div data-hf-id="hf-mk63" id="s3-chain">
+            <div data-hf-id="hf-elnf" class="node" id="n1">사이드 컨트롤</div>
+            <div data-hf-id="hf-tm9n" class="link" id="l1"></div>
+            <div data-hf-id="hf-1x5f" class="node" id="n2">암트라이앵글</div>
+            <div data-hf-id="hf-iqs0" class="link" id="l2"></div>
+            <div data-hf-id="hf-fe9d" class="node final" id="n3">노스 사우스 초크</div>
+          </div>
+          <div data-hf-id="hf-xf13" id="s3-caption">체계적인 기술 트리 · 인기 콤보 · 커뮤니티 기여</div>
+        </div>
+      </div>
+
+      <!-- S4: logo lockup -->
+      <div data-hf-id="hf-r42l" id="s4" class="scene clip" data-start="7.8" data-duration="2.2" data-track-index="1">
+        <div data-hf-id="hf-n7se" class="scene-content">
+          <div data-hf-id="hf-axjp" id="s4-logo-wrap"><img data-hf-id="hf-x1hz" id="s4-logo" src="assets/ossground.svg" alt="ossground"></div>
+          <div data-hf-id="hf-45oo" id="s4-tag">함께 만드는 주짓수 기술 라이브러리</div>
+          <div data-hf-id="hf-hm3r" id="s4-url">ossground.com</div>
+        </div>
+      </div>
+
+      <!-- light sweep accents -->
+      <div data-hf-id="hf-59bf" id="fx" class="clip" data-start="0" data-duration="10" data-track-index="2">
+        <div data-hf-id="hf-0who" id="sweep" data-layout-allow-overflow="true"></div>
+      </div>
+    </div>
+
+    <script>
+      // build odometer strips: 0-9 repeated 3x
+      ["d0", "d1", "d2"].forEach((id) => {
+        const el = document.getElementById(id);
+        let html = "";
+        for (let r = 0; r < 3; r++) for (let n = 0; n < 10; n++) html += "<span>" + n + "</span>";
+        el.innerHTML = html;
+      });
+
+      const tl = gsap.timeline({ paused: true });
+      const E = "power3.out";
+
+      // ---- background ----
+      tl.set("#bg-dim", { autoAlpha: 1 }, 0);
+      tl.to("#bg-dim", { autoAlpha: 0, duration: 0.6, ease: "power2.out" }, 0);
+      tl.fromTo("#bg-photo-wrap", { scale: 1.18 }, { scale: 1.0, duration: 10, ease: "none" }, 0);
+      tl.to("#bg-dim", { autoAlpha: 0.6, duration: 0.5, ease: "power2.inOut" }, 7.6);
+
+      // ---- sweep accents (scene handoffs) ----
+      [[0.05, 0.7], [2.25, 0.6], [7.55, 0.6]].forEach(([at, dur]) => {
+        tl.set("#sweep", { x: -700 }, at === 0.05 ? 0 : at - 0.05);
+        tl.to("#sweep", { x: 2200, duration: dur, ease: "power2.inOut" }, at);
+      });
+
+      // ---- S1 kinetic words ----
+      const words = ["#w1", "#w2", "#w3"];
+      const wordAt = [0.25, 0.85, 1.45];
+      words.forEach((w, i) => {
+        tl.fromTo(w, { autoAlpha: 0, scale: 1.35, y: 0 }, { autoAlpha: 1, scale: 1, duration: 0.28, ease: "expo.out" }, wordAt[i]);
+        if (i < words.length - 1) {
+          tl.to(w, { autoAlpha: 0, y: -40, duration: 0.18, ease: "power2.in" }, wordAt[i + 1] - 0.08);
+        }
+      });
+      tl.fromTo("#s1-bar", { scaleX: 0 }, { scaleX: 1, duration: 1.6, ease: "power2.inOut" }, 0.25);
+      tl.to("#w3", { scale: 1.08, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, 2.2);
+      tl.to("#s1-bar", { scaleX: 0, duration: 0.3, ease: "power2.in" }, 2.2);
+
+      // ---- S2 count ----
+      tl.fromTo("#s2-kicker", { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: E }, 2.55);
+      tl.fromTo("#s2-num", { autoAlpha: 0, y: 40 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: E }, 2.65);
+      // odometer: strip of 30 digits, target index -> yPercent
+      const targets = { d0: 2, d1: 12, d2: 27 };
+      Object.keys(targets).forEach((id, i) => {
+        tl.fromTo("#" + id, { yPercent: 0 }, { yPercent: (-targets[id] / 30) * 100, duration: 1.3 + i * 0.15, ease: "expo.out" }, 2.7);
+      });
+      tl.fromTo("#s2-unit", { autoAlpha: 0, x: -30 }, { autoAlpha: 1, x: 0, duration: 0.4, ease: E }, 3.2);
+      tl.fromTo("#s2-sub", { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: E }, 3.4);
+      tl.fromTo("#s2 .chip", { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.35, ease: "back.out(1.6)", stagger: 0.07 }, 3.8);
+      tl.to("#s2 .scene-content", { autoAlpha: 0, scale: 0.96, duration: 0.3, ease: "power2.in" }, 5.1);
+
+      // ---- S3 combo chain ----
+      tl.fromTo("#s3-title", { autoAlpha: 0, y: 30 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: E }, 5.45);
+      tl.fromTo("#n1", { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: E }, 5.7);
+      tl.fromTo("#l1", { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.25, ease: "power2.inOut" }, 5.95);
+      tl.fromTo("#n2", { autoAlpha: 0, x: -40 }, { autoAlpha: 1, x: 0, duration: 0.3, ease: E }, 6.15);
+      tl.fromTo("#l2", { scaleX: 0, transformOrigin: "0% 50%" }, { scaleX: 1, duration: 0.25, ease: "power2.inOut" }, 6.4);
+      tl.fromTo("#n3", { autoAlpha: 0, scale: 0.7 }, { autoAlpha: 1, scale: 1, duration: 0.4, ease: "back.out(2)" }, 6.6);
+      tl.fromTo("#s3-caption", { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.4, ease: "power1.out" }, 6.9);
+      tl.to("#s3 .scene-content", { autoAlpha: 0, y: -30, duration: 0.3, ease: "power2.in" }, 7.5);
+
+      // ---- S4 lockup ----
+      tl.fromTo(
+        "#s4-logo-wrap",
+        { clipPath: "inset(-30% 110% -30% -10%)", autoAlpha: 1 },
+        { clipPath: "inset(-30% -10% -30% -10%)", duration: 0.7, ease: "expo.inOut" },
+        7.85
+      );
+      tl.fromTo("#s4-logo", { scale: 1.12 }, { scale: 1, duration: 1.2, ease: E }, 7.85);
+      tl.fromTo("#s4-tag", { autoAlpha: 0, y: 26 }, { autoAlpha: 1, y: 0, duration: 0.45, ease: E }, 8.4);
+      tl.fromTo("#s4-url", { autoAlpha: 0, scale: 0.85 }, { autoAlpha: 1, scale: 1, duration: 0.45, ease: "back.out(2)" }, 8.6);
+
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
