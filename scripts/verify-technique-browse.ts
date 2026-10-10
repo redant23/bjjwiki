@@ -47,7 +47,7 @@ assert.equal(q.positionType, 'top');
 assert.deepEqual(q.difficulty, { $gte: 4, $lte: 6 });
 assert.deepEqual(q['videos.0'], { $exists: true });
 assert.deepEqual(q.thumbnailUrl, { $nin: [null, ''] });
-assert.equal((q.$or as unknown[]).length, 4);
+assert.equal(q.$or, undefined); // 검색어는 browse-service가 lib/search로 매칭한다
 assert.deepEqual(buildBrowseQuery({ ...DEFAULT_BROWSE_PARAMS, type: 'nogi' }).type, { $in: ['nogi', 'both'] });
 
 // 정렬: 동률 방지용 _id 포함

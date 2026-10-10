@@ -7,6 +7,7 @@ import {
   buildBrowseQuery,
   type BrowseParams,
 } from '@/lib/technique-browse';
+import { buildSearchIndex, search } from '@/lib/search';
 
 export interface BrowseResult {
   items: TechniqueCardData[];
@@ -20,6 +21,22 @@ export interface BrowseResult {
 export async function browseTechniques(params: BrowseParams): Promise<BrowseResult> {
   await dbConnect();
   const query = buildBrowseQuery(params);
+
+  if (params.q) {
+    // 다른 필터를 통과한 기술 중에서 이름/별칭이 맞는 것만 남긴다 (⌘K와 같은 규칙).
+    const candidates = await Technique.find(query).select('_id name aka slug pathSlugs level').lean();
+    const index = buildSearchIndex(
+      candidates.map((t) => ({
+        _id: t._id.toString(),
+        name: t.name,
+        aka: t.aka,
+        slug: t.slug,
+        pathSlugs: t.pathSlugs,
+        level: t.level,
+      }))
+    );
+    query._id = { $in: search(index, params.q).techniques.map((h) => h.technique._id) };
+  }
 
   const total = await Technique.countDocuments(query);
   const pageCount = Math.max(1, Math.ceil(total / BROWSE_PAGE_SIZE));

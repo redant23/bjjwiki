@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, X, Loader2, ChevronDown, ChevronRight, Check } from 'lucide-react';
+import { buildSearchIndex, search } from '@/lib/search';
 
 interface LightTechnique {
   _id: string;
   name: { ko: string; en?: string };
+  aka?: { ko?: string[]; en?: string[] };
   slug: string;
   parentId: string | null;
   pathSlugs: string[];
@@ -56,14 +58,13 @@ export function TechniqueParentPicker({
   const [all, setAll] = useState<LightTechnique[] | null>(null);
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<LightTechnique[] | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!isOpen) return;
     setQuery('');
-    setSearchResults(null);
+    setDebouncedQuery('');
     setLoadError('');
 
     async function fetchAll() {
@@ -82,39 +83,21 @@ export function TechniqueParentPicker({
     fetchAll();
   }, [isOpen]);
 
+  // ⌘K와 같은 검색 로직: 이미 받아 둔 전체 목록에서 정규화·랭킹한다.
   useEffect(() => {
-    if (!query.trim()) {
-      setSearchResults(null);
-      setSearching(false);
-      return;
-    }
-    let cancelled = false;
-    const timeoutId = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/techniques?search=${encodeURIComponent(query)}&fields=light`);
-        const data = await res.json();
-        if (cancelled) return;
-        if (data.success) {
-          setSearchResults(data.data);
-        } else {
-          setSearchResults([]);
-        }
-      } catch {
-        if (!cancelled) {
-          setSearchResults([]);
-        }
-      } finally {
-        if (!cancelled) {
-          setSearching(false);
-        }
-      }
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-    };
+    const id = setTimeout(() => setDebouncedQuery(query), 80);
+    return () => clearTimeout(id);
   }, [query]);
+
+  const searchIndex = useMemo(() => (all ? buildSearchIndex(all) : null), [all]);
+  const searchResults = useMemo(
+    () =>
+      searchIndex && debouncedQuery.trim()
+        ? search(searchIndex, debouncedQuery).techniques.map((h) => h.technique as LightTechnique)
+        : null,
+    [searchIndex, debouncedQuery]
+  );
+  const searching = !!query.trim() && !all;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

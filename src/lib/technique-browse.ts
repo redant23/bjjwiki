@@ -70,14 +70,13 @@ export function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** MongoDB 필터. 게시된 기술만, 루트 분류(카테고리)는 제외한다. */
+/**
+ * MongoDB 필터. 게시된 기술만, 루트 분류(카테고리)는 제외한다.
+ * 검색어(q)는 여기서 다루지 않는다: ⌘K와 같은 정규화·매칭(lib/search)을 browse-service가 적용한다.
+ */
 export function buildBrowseQuery(p: BrowseParams): Record<string, unknown> {
   const query: Record<string, unknown> = { status: 'published', level: { $gt: 1 } };
 
-  if (p.q) {
-    const pattern = new RegExp(escapeRegex(p.q), 'i');
-    query.$or = [{ 'name.ko': pattern }, { 'name.en': pattern }, { 'aka.ko': pattern }, { 'aka.en': pattern }];
-  }
   // 기/노기 필터에는 "공용"도 포함한다 (도복을 입고도, 안 입고도 할 수 있는 기술이므로).
   if (p.type) query.type = { $in: [p.type, 'both'] };
   if (p.role) query.primaryRole = p.role;

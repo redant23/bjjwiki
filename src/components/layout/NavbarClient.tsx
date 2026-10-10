@@ -60,7 +60,7 @@ export function NavbarClient() {
               className="flex relative h-9 max-w-[600px] w-full items-center justify-start rounded-md border border-input bg-muted/50 px-4 py-2 text-sm text-muted-foreground shadow-sm hover:bg-muted transition-colors"
             >
               <Search className="mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="truncate w-full">기술 검색...</span>
+              <span className="truncate w-full">기술·콤보 검색...</span>
               <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
                 <span className="text-xs">⌘</span>K
               </kbd>
@@ -134,7 +134,7 @@ export function NavbarClient() {
           <button
             onClick={() => setIsSearchOpen(true)}
             className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:bg-accent hover:text-accent-foreground h-9 w-9"
-            aria-label="기술 검색"
+            aria-label="기술·콤보 검색"
           >
             <Search className="h-5 w-5" />
           </button>

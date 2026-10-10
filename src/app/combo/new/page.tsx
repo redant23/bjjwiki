@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -8,15 +8,9 @@ import { Search, X, ArrowUp, ArrowDown, Upload, Loader2 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import GearTypeSelect from '@/components/combo/GearTypeSelect';
 import type { ComboGearType } from '@/lib/combo-type';
+import { buildSearchIndex, search, type SearchTechniqueInput } from '@/lib/search';
 
-interface SearchResult {
-  _id: string;
-  name: { ko: string; en?: string };
-  slug: string;
-  pathSlugs: string[];
-  primaryRole: string;
-  type: string;
-}
+type SearchResult = SearchTechniqueInput;
 
 interface ChainItem {
   _id: string;
@@ -28,8 +22,8 @@ export default function NewComboPage() {
   const router = useRouter();
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [techniques, setTechniques] = useState<SearchTechniqueInput[] | null>(null);
   const [name, setName] = useState('');
   const [chain, setChain] = useState<ChainItem[]>([]);
   const [gearType, setGearType] = useState<ComboGearType | ''>('');
@@ -45,33 +39,35 @@ export default function NewComboPage() {
     }
   }, [status, router]);
 
+  // ⌘K와 같은 검색 로직: 목록을 한 번 받아 브라우저에서 정규화·랭킹한다.
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      return;
-    }
-    const timeoutId = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(`/api/techniques?search=${encodeURIComponent(query)}&fields=light`);
-        const data = await res.json();
-        if (data.success) {
-          setResults(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to search techniques:', error);
-        setResults([]);
-      } finally {
-        setSearching(false);
-      }
-    }, 300);
-    return () => clearTimeout(timeoutId);
+    fetch('/api/search-index', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setTechniques(json.data.techniques);
+      })
+      .catch((error) => console.error('Failed to load techniques:', error));
+  }, []);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQuery(query), 80);
+    return () => clearTimeout(id);
   }, [query]);
+
+  const searchIndex = useMemo(() => (techniques ? buildSearchIndex(techniques) : null), [techniques]);
+  const results: SearchResult[] = useMemo(
+    () =>
+      searchIndex && query.trim()
+        ? search(searchIndex, debouncedQuery).techniques.slice(0, 30).map((h) => h.technique)
+        : [],
+    [searchIndex, debouncedQuery, query]
+  );
+  const searching = !!query.trim() && !techniques;
 
   function addToChain(result: SearchResult) {
     setChain((prev) => [...prev, { _id: result._id, name: result.name }]);
     setQuery('');
-    setResults([]);
+    setDebouncedQuery('');
   }
 
   function removeFromChain(index: number) {
