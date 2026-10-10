@@ -1,42 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Bookmark, Layers, Plus, Video } from 'lucide-react';
-import { getYoutubeThumbnailUrl } from '@/lib/youtube';
-import { comboGearLabel, comboMatchesType, type ComboGearType, type ComboTypeFilter } from '@/lib/combo-type';
-
-interface ComboTechnique {
-  _id: string;
-  name: { ko: string; en?: string };
-  slug: string;
-  pathSlugs: string[];
-}
-
-interface ComboListItem {
-  _id: string;
-  name: string;
-  techniques: ComboTechnique[];
-  gearType?: ComboGearType;
-  videoUrl?: string;
-  photoUrl?: string;
-  createdBy: { _id: string; nickname: string };
-  saveCount: number;
-  savedByMe?: boolean;
-}
+import { Plus } from 'lucide-react';
+import { comboMatchesType, type ComboTypeFilter } from '@/lib/combo-type';
+import { ComboCard, ComboCardSkeleton, type ComboListItem } from '@/components/combo/ComboCard';
 
 type SortOption = 'popular' | 'recent';
 
-function techniqueHref(technique: ComboTechnique) {
-  return `/technique/${[...(technique.pathSlugs || []), technique.slug].join('/')}`;
-}
-
-// 썸네일: 직접 올린 사진이 우선, 없으면 유튜브 영상 썸네일. 둘 다 없으면 null.
-function comboThumbnail(combo: ComboListItem): string | null {
-  return combo.photoUrl || (combo.videoUrl ? getYoutubeThumbnailUrl(combo.videoUrl) : null);
-}
+const SORT_OPTIONS = [['popular', '인기순'], ['recent', '최신순']] as const;
 
 const TYPE_FILTERS: Array<{ value: ComboTypeFilter; label: string }> = [
   { value: 'all', label: '전체' },
@@ -117,139 +90,113 @@ export default function ComboListPage() {
     router.push(status === 'authenticated' ? '/combo/new' : '/auth/signin');
   }
 
+  function resetFilters() {
+    setTypeFilter('all');
+  }
+
+  const filters = (
+    <div className="flex items-center gap-2" role="group" aria-label="콤보 정렬 및 필터">
+      <div className="flex shrink-0 rounded-md bg-muted p-0.5">
+        {SORT_OPTIONS.map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setSort(value)}
+            aria-pressed={sort === value}
+            className={`h-8 whitespace-nowrap rounded px-3 text-sm transition-colors ${
+              sort === value
+                ? 'bg-background font-semibold text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="flex shrink-0 rounded-md bg-muted p-0.5" role="group" aria-label="기/노기 필터">
+        {TYPE_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            type="button"
+            onClick={() => setTypeFilter(f.value)}
+            aria-pressed={typeFilter === f.value}
+            className={`h-8 whitespace-nowrap rounded px-3 text-sm transition-colors ${
+              typeFilter === f.value
+                ? 'bg-background font-semibold text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="container max-w-4xl py-6 lg:py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">콤보</h1>
+    <div>
+      <div className="flex items-center gap-4">
+        <h1 className="text-[22px] font-bold leading-tight md:text-[28px]">콤보</h1>
+        <div className="hidden md:block">{filters}</div>
         <button
+          type="button"
           onClick={handleRegisterClick}
-          className="flex items-center gap-2 px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          aria-label="콤보 등록"
+          className="ml-auto flex h-10 w-10 items-center justify-center gap-2 rounded-md bg-primary text-primary-foreground transition-colors hover:bg-primary/90 md:w-auto md:px-4"
         >
-          <Plus className="h-4 w-4" />
-          콤보 등록
+          <Plus className="h-5 w-5 md:h-4 md:w-4" />
+          <span className="hidden text-sm font-medium md:inline">콤보 등록</span>
         </button>
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <div className="flex gap-2">
-          {([['popular', '인기순'], ['recent', '최신순']] as const).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setSort(value)}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                sort === value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2" role="group" aria-label="기/노기 필터">
-          {TYPE_FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setTypeFilter(f.value)}
-              aria-pressed={typeFilter === f.value}
-              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                typeFilter === f.value
-                  ? 'border-primary bg-primary/10 text-foreground'
-                  : 'border-input text-muted-foreground hover:bg-muted/50'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      {/* 모바일: 스크롤해도 상단(네비바 h-14 아래)에 고정되는 필터 줄 */}
+      <div className="sticky top-14 z-30 -mx-4 mt-2 overflow-x-auto bg-background px-4 py-2 sm:-mx-6 sm:px-6 md:hidden">
+        {filters}
       </div>
 
-      {error && (
-        <div className="p-4 bg-destructive/10 text-destructive rounded-md mb-6">
-          {error}
-        </div>
-      )}
+      <div className="mt-4">
+        {error && (
+          <div className="mb-4 rounded-md bg-destructive/10 p-4 text-destructive">{error}</div>
+        )}
 
-      {combos === null && !error && <div className="text-muted-foreground">불러오는 중...</div>}
+        {combos === null && !error && (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[repeat(auto-fill,minmax(340px,1fr))] md:gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <ComboCardSkeleton key={i} />
+            ))}
+          </div>
+        )}
 
-      {combos && combos.length === 0 && (
-        <p className="text-muted-foreground">등록된 콤보가 없습니다. 첫 콤보를 등록해보세요.</p>
-      )}
+        {combos && combos.length === 0 && (
+          <p className="text-muted-foreground">등록된 콤보가 없어요. 첫 콤보를 등록해보세요.</p>
+        )}
 
-      {combos && combos.length > 0 && visibleCombos && visibleCombos.length === 0 && (
-        <p className="text-muted-foreground">해당 유형의 콤보가 없습니다.</p>
-      )}
+        {combos && combos.length > 0 && visibleCombos && visibleCombos.length === 0 && (
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
+            <p className="text-muted-foreground">조건에 맞는 콤보가 없어요</p>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted/50"
+            >
+              필터 초기화
+            </button>
+          </div>
+        )}
 
-      {visibleCombos && visibleCombos.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {visibleCombos.map((combo) => {
-            const thumbnail = comboThumbnail(combo);
-            const typeLabel = comboGearLabel(combo.gearType);
-            return (
-              // 카드 전체를 누르면 콤보 상세로 가고(제목 링크를 카드 크기로 늘림), 체인의 기술 이름과
-              // 저장 버튼은 그 위(z-10)에 올려 각각 따로 눌린다. 링크 안에 링크를 넣지 않기 위한 구조.
-              <div
+        {visibleCombos && visibleCombos.length > 0 && (
+          <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-[repeat(auto-fill,minmax(340px,1fr))] md:gap-4">
+            {visibleCombos.map((combo) => (
+              <ComboCard
                 key={combo._id}
-                className="relative flex gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors"
-              >
-                {thumbnail ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={thumbnail} alt="" className="h-20 w-28 shrink-0 rounded-md object-cover" />
-                ) : (
-                  <div className="flex h-20 w-28 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Layers className="h-6 w-6" aria-hidden="true" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold">
-                      <Link href={`/combo/${combo._id}`} className="after:absolute after:inset-0">
-                        {combo.name}
-                      </Link>
-                    </h3>
-                    <button
-                      onClick={() => handleSave(combo._id)}
-                      disabled={savingId === combo._id}
-                      aria-label="콤보 저장"
-                      className={`relative z-10 flex shrink-0 items-center gap-1 px-2 py-1 rounded-md text-sm transition-colors ${
-                        combo.savedByMe ? 'text-accent' : 'text-muted-foreground hover:text-accent'
-                      }`}
-                    >
-                      <Bookmark className={`h-4 w-4 ${combo.savedByMe ? 'fill-current' : ''}`} />
-                      {combo.saveCount}
-                    </button>
-                  </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm">
-                    {combo.techniques.map((technique, index) => (
-                      <span key={technique._id} className="inline-flex items-center gap-1">
-                        <Link
-                          href={techniqueHref(technique)}
-                          className="relative z-10 text-muted-foreground hover:text-foreground hover:underline"
-                        >
-                          {technique.name.ko}
-                        </Link>
-                        {index < combo.techniques.length - 1 && (
-                          <span className="text-muted-foreground/60" aria-hidden="true">→</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>by {combo.createdBy?.nickname}</span>
-                    <span>· {typeLabel}</span>
-                    {combo.videoUrl && (
-                      <span className="inline-flex items-center gap-1 text-primary">
-                        <Video className="h-3.5 w-3.5" />
-                        영상
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                combo={combo}
+                saving={savingId === combo._id}
+                onToggleSave={handleSave}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

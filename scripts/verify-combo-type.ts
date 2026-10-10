@@ -41,3 +41,19 @@ assert.equal(gearTypeFromComboName('[기타] 모르는 말머리'), null);
 assert.equal(gearTypeFromComboName(''), null);
 
 console.log('combo-type: all checks passed');
+
+// 목록 카드 표시용 제목/배지 (화면 변환 전용)
+{
+  const { comboDisplayTitle, comboBadgeKind, comboBadgeLabel } = await import('../src/lib/combo-type.ts');
+  assert.equal(comboDisplayTitle('[노기] 루크 그리피스 백테이크 바디 트라이앵글 리어 네이키드 초크 연계'), '루크 그리피스 백테이크 바디 트라이앵글 리어 네이키드 초크');
+  assert.equal(comboDisplayTitle('[기/노기] 하프 가드 딥 하프 스윕 연계'), '하프 가드 딥 하프 스윕');
+  assert.equal(comboDisplayTitle('[기] 스파이더 가드 연계'), '스파이더 가드');
+  assert.equal(comboDisplayTitle('게이터 롤 패스 아나콘다 초크 연계'), '게이터 롤 패스 아나콘다 초크');
+  assert.equal(comboDisplayTitle('[기] 연계'), '[기] 연계'); // 비면 원래 이름
+  assert.equal(comboDisplayTitle('[기타] 모르는 말머리'), '[기타] 모르는 말머리');
+  assert.equal(comboBadgeKind('nogi', '[기] 이름'), 'nogi'); // gearType 우선
+  assert.equal(comboBadgeKind(undefined, '[기/노기] 이름'), 'both');
+  assert.equal(comboBadgeKind(undefined, '[노기] 이름'), 'nogi');
+  assert.equal(comboBadgeKind(undefined, '말머리 없음'), 'unknown');
+  assert.equal(comboBadgeLabel('both'), '기/노기');
+}
