@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useTheme } from 'next-themes';
 import { useSession, signOut } from 'next-auth/react';
-import { Home, List, Layers, Plus, User, X, Moon, Sun, LogIn, LogOut } from 'lucide-react';
+import { Bookmark, Home, List, Layers, Plus, User, X, Moon, Sun, LogIn, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Sidebar } from '@/components/layout/Sidebar';
 
@@ -170,6 +170,22 @@ export function MobileBottomNav({ initialTree }: MobileBottomNavProps) {
                 >
                   <User className="h-4 w-4" />
                   내 정보 보기
+                </Link>
+                <Link
+                  href="/profile/saved-combos"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Bookmark className="h-4 w-4" />
+                  저장한 콤보
+                </Link>
+                <Link
+                  href="/profile/combo-requests"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Layers className="h-4 w-4" />
+                  내 콤보 요청
                 </Link>
                 {isAdmin && (
                   <Link

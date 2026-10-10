@@ -1,127 +1,120 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/db';
-import { authOptions } from '@/lib/auth';
 import Combo from '@/models/Combo';
+import ComboRequest from '@/models/ComboRequest';
 import User from '@/models/User';
-import { isComboGearType } from '@/lib/combo-type';
+import {
+  adminUpdateTechniques,
+  canViewCombo,
+  COMBO_POPULATE,
+  findComboByParam,
+  loadSavedSet,
+  serializeCombo,
+} from '@/lib/combo-service';
+import { FORBIDDEN, getViewer, jsonError, NOT_FOUND, UNAUTHORIZED } from '@/lib/combo-api';
 
-export async function GET(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
+// :id 는 공개 번호(14) 또는 ObjectId. 대기/반려 콤보는 작성자와 관리자에게만 보이고, 그 외에는 404.
+export async function GET(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
   try {
     await dbConnect();
-    const combo: any = await Combo.findById(params.id)
-      .populate('techniques', 'name slug pathSlugs')
-      .populate('createdBy', 'nickname')
-      .lean();
+    const viewer = await getViewer();
+    const found = await findComboByParam(id);
+    if (!found || !canViewCombo(found, viewer)) return NOT_FOUND();
 
-    if (!combo) {
-      return NextResponse.json({ success: false, error: 'Combo not found' }, { status: 404 });
+    const doc: any = await Combo.findById(found._id).populate([...COMBO_POPULATE]).lean();
+    const combo = serializeCombo(doc, viewer, await loadSavedSet(viewer));
+
+    // 내(또는 관리자에게는 전체) 대기 중인 시연 요청 + 이 콤보의 최근 등록 요청 상태(반려 사유 표시용)
+    let pendingRequests: unknown[] = [];
+    let creation: unknown = null;
+    if (viewer) {
+      const mineFilter = viewer.isAdmin ? {} : { requestedBy: viewer.id };
+      const requests: any[] = await ComboRequest.find({
+        combo: found._id,
+        status: 'pending',
+        type: { $ne: 'create_combo' },
+        ...mineFilter,
+      })
+        .sort({ createdAt: 1 })
+        .populate('requestedBy', 'nickname')
+        .lean();
+      pendingRequests = requests.map((r) => ({
+        _id: String(r._id),
+        type: r.type,
+        demoId: r.payload?.demoId ? String(r.payload.demoId) : null,
+        demo: r.payload?.demo ?? null,
+        before: r.payload?.before ?? null,
+        requestedBy: r.requestedBy ? { _id: String(r.requestedBy._id), nickname: r.requestedBy.nickname } : null,
+        createdAt: r.createdAt,
+      }));
+
+      if (combo.status !== 'published') {
+        const latest: any = await ComboRequest.findOne({ combo: found._id, type: 'create_combo' })
+          .sort({ createdAt: -1 })
+          .lean();
+        if (latest) {
+          creation = {
+            _id: String(latest._id),
+            status: latest.status,
+            reviewNote: latest.reviewNote ?? null,
+            resubmitted: !!latest.resubmittedAs,
+          };
+        }
+      }
     }
 
-    const session = await getServerSession(authOptions);
-    let savedByMe = false;
-    if (session) {
-      const user = await User.findById(session.user.id).select('savedCombos').lean();
-      savedByMe = (user?.savedCombos || []).some((id: any) => id.toString() === params.id);
-    }
-
-    return NextResponse.json({ success: true, data: { ...combo, savedByMe } });
+    return NextResponse.json({ success: true, data: { ...combo, pendingRequests, creation } });
   } catch (error) {
-    console.error('GET /api/combos/[id] error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch combo' }, { status: 500 });
+    return jsonError(error, 'GET /api/combos/[id]');
   }
 }
 
-export async function PATCH(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
+// 관리자 전용: 기술 순서 오류 수정(번호 유지, chainKey 중복 검사).
+export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    const viewer = await getViewer();
+    if (!viewer) return UNAUTHORIZED();
+    if (!viewer.isAdmin) return FORBIDDEN();
 
-    await dbConnect();
-    const combo = await Combo.findById(params.id);
-    if (!combo) {
-      return NextResponse.json({ success: false, error: 'Combo not found' }, { status: 404 });
+    const body = await request.json().catch(() => ({}));
+    if (body.techniques === undefined) {
+      return NextResponse.json({ success: false, error: '수정할 내용이 없습니다.' }, { status: 400 });
     }
-
-    if (combo.createdBy.toString() !== session.user.id && session.user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
-    }
-
-    const body = await request.json();
-
-    if (body.name !== undefined) {
-      if (typeof body.name !== 'string' || !body.name.trim()) {
-        return NextResponse.json({ success: false, error: '이름은 비워둘 수 없습니다.' }, { status: 400 });
-      }
-      combo.name = body.name.trim();
-    }
-    if (body.gearType !== undefined) {
-      if (!isComboGearType(body.gearType)) {
-        return NextResponse.json(
-          { success: false, error: '영상 복장(기/노기)이 올바르지 않습니다.' },
-          { status: 400 }
-        );
-      }
-      combo.gearType = body.gearType;
-    }
-    if (body.videoUrl !== undefined) {
-      combo.videoUrl = body.videoUrl || undefined;
-    }
-    if (body.photoUrl !== undefined) {
-      combo.photoUrl = body.photoUrl || undefined;
-    }
-
-    await combo.save();
-
-    return NextResponse.json({ success: true, data: combo });
+    const comboId = await adminUpdateTechniques(id, body.techniques);
+    return NextResponse.json({ success: true, data: { _id: String(comboId) } });
   } catch (error) {
-    console.error('PATCH /api/combos/[id] error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to update combo' }, { status: 500 });
+    return jsonError(error, 'PATCH /api/combos/[id]');
   }
 }
 
-export async function DELETE(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
+// 관리자 전용. 번호는 재사용하지 않으므로 결번이 남는다.
+export async function DELETE(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    const viewer = await getViewer();
+    if (!viewer) return UNAUTHORIZED();
+    if (!viewer.isAdmin) return FORBIDDEN();
 
     await dbConnect();
-    const combo = await Combo.findById(params.id);
-    if (!combo) {
-      return NextResponse.json({ success: false, error: 'Combo not found' }, { status: 404 });
-    }
-
-    if (combo.createdBy.toString() !== session.user.id && session.user.role !== 'admin') {
-      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
-    }
+    const combo = await findComboByParam(id);
+    if (!combo) return NOT_FOUND();
 
     await combo.deleteOne();
-
-    // 삭제된 콤보를 저장해둔 유저들의 savedCombos에 고아 참조가 남지 않도록 정리.
+    // 저장 기록 / 대기 중 요청 정리
     await User.updateMany(
-      { savedCombos: params.id },
-      { $pull: { savedCombos: params.id } }
+      { savedCombos: combo._id },
+      { $pull: { savedCombos: combo._id, savedComboLog: { combo: combo._id } } }
+    );
+    await ComboRequest.updateMany(
+      { combo: combo._id, status: 'pending' },
+      { $set: { status: 'cancelled' }, $unset: { dedupeKey: 1 } }
     );
 
     return NextResponse.json({ success: true, data: {} });
   } catch (error) {
-    console.error('DELETE /api/combos/[id] error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to delete combo' }, { status: 500 });
+    return jsonError(error, 'DELETE /api/combos/[id]');
   }
 }

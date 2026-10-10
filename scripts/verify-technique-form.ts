@@ -38,7 +38,8 @@ for (const url of [
 ]) {
   assert.equal(getYoutubeVideoId(url), id, url);
   assert.equal(getYoutubeThumbnailUrl(url), `https://img.youtube.com/vi/${id}/hqdefault.jpg`);
-  assert.equal(getYoutubeEmbedUrl(url), `https://www.youtube.com/embed/${id}`);
+  // 시작 시간(t=)이 있으면 ?start=초 로 보존한다.
+  assert.equal(getYoutubeEmbedUrl(url), `https://www.youtube.com/embed/${id}${url.includes('&t=3') ? '?start=3' : ''}`);
 }
 assert.equal(getYoutubeVideoId('https://vimeo.com/123'), null);
 assert.equal(getYoutubeEmbedUrl('https://vimeo.com/123'), 'https://vimeo.com/123');

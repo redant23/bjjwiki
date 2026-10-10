@@ -6,7 +6,6 @@ import {
   normalizeSearchText,
   search,
   searchKeys,
-  stripComboTag,
   toChosung,
   type SearchTechniqueInput,
 } from '../src/lib/search.ts';
@@ -52,10 +51,11 @@ const techniques = [
 const id = (ko: string) => techniques.find((x) => x.name.ko === ko)!._id;
 
 const combos = [
-  { _id: 'c1', name: '[기] 클로즈드 가드 트라이앵글 연계', techniques: [id('클로즈드 가드'), id('트라이앵글 초크')], gearType: 'gi' },
-  { _id: 'c2', name: '[노기] 플라워 스윕 암바 연계', techniques: [id('플라워 스윕'), id('암바')], gearType: 'nogi' },
-  { _id: 'c3', name: '[노기] 백 테이크 연계', techniques: [id('힙 이스케이프'), id('리어 네이키드 초크')], gearType: 'nogi' },
-  { _id: 'c4', name: '[기] 트라이앵글 초크 피니시', techniques: [id('트라이앵글 초크'), id('암바')], gearType: 'gi' },
+  { _id: 'c1', number: 14, techniques: [id('클로즈드 가드'), id('트라이앵글 초크')], performers: ['케네디 마시엘', '마이키 무스메치'], gearTypes: ['gi'] },
+  { _id: 'c2', number: 3, techniques: [id('플라워 스윕'), id('암바')], performers: ['마이키 무스메치'], gearTypes: ['nogi'] },
+  { _id: 'c3', number: 140, techniques: [id('힙 이스케이프'), id('리어 네이키드 초크')], performers: [], gearTypes: ['nogi'] },
+  { _id: 'c4', number: 7, techniques: [id('트라이앵글 초크'), id('암바')], performers: ['John Danaher'], gearTypes: ['gi', 'nogi'] },
+  { _id: 'c5', number: null, status: 'pending' as const, techniques: [id('암바'), id('트라이앵글 초크')], performers: [] },
 ];
 
 const index = buildSearchIndex(techniques, combos);
@@ -72,7 +72,6 @@ assert.deepEqual(searchKeys('SLX 가드'), ['slx가드']); // 여러 글자 영�
 assert.equal(toChosung('플라워 스윕'), 'ㅍㄹㅇㅅㅇ');
 assert.equal(isChosungQuery('ㅍㄹㅇ'), true);
 assert.equal(isChosungQuery('플ㄹ'), false);
-assert.equal(stripComboTag('[기/노기] 하프 가드 연계'), '하프 가드 연계');
 
 // 요청된 테스트 케이스
 assert.equal(top('플라워'), '플라워 스윕');
@@ -118,17 +117,27 @@ assert.equal(names('가드 리텐션')[1], '가드 리텐션 힙 스위치 드�
 // 이름 접두: 같은 등급이면 짧은 이름 → 낮은 level 순
 assert.deepEqual(names('클로즈드'), ['클로즈드 가드', '클로즈드 가드 스윕']);
 
-// 콤보: 이름 매칭이 포함 기술 매칭보다 위, 말머리는 무시
-assert.deepEqual(comboIds('트라이앵글'), ['c4', 'c1']); // 콤보 이름 접두 > 중간
-assert.deepEqual(comboIds('triangle'), ['c1', 'c4']); // 둘 다 포함 기술(트라이앵글 초크)로 매칭
+// 콤보: 번호 > 시전자 > 포함 기술. 이름(제목)은 검색 대상이 아니다
+assert.deepEqual(comboIds('트라이앵글'), ['c4', 'c1', 'c5']); // 모두 포함 기술로 매칭, 번호 오름차순(7, 14, 번호 없는 대기 콤보는 뒤)
 assert.equal(search(index, 'triangle').combos[0].matchedTechnique, '트라이앵글 초크');
-assert.deepEqual(comboIds('트라이앵글 초크'), ['c4', 'c1']); // c4는 콤보 이름 접두 일치
+assert.deepEqual(comboIds('마이키'), ['c2', 'c1']); // 시전자 일치(번호 3, 14)
+assert.equal(search(index, '마이키').combos[0].matchedPerformer, '마이키 무스메치');
+assert.deepEqual(comboIds('danaher'), ['c4']);
+assert.deepEqual(comboIds('ㅁㅇㅋ'), ['c2', 'c1']); // 시전자 초성
 assert.deepEqual(comboIds('플라워'), ['c2']);
-assert.deepEqual(comboIds('백 테이크'), ['c3']);
 assert.deepEqual(comboIds('rnc'), ['c3']);
-assert.ok(search(index, '기').combos.every((h) => h.matchedTechnique)); // [기] 말머리로는 콤보 이름이 걸리지 않음
-assert.deepEqual(comboIds('노기'), []);
-assert.deepEqual(comboIds('ㅍㄹㅇ'), ['c2']);
+assert.deepEqual(comboIds('노기'), []); // 기/노기는 이름 검색 대상이 아님
+assert.deepEqual(search(index, '플라워').combos[0].chain, ['플라워 스윕', '암바']);
+
+// 번호 질의: 어떤 표기든 해당 번호 콤보가 1순위
+for (const q of ['14', '#14', '14번', '14번 콤보', '#14번 콤보', ' 14 번 콤보 ']) {
+  const r = search(index, q).combos;
+  assert.equal(r[0]?.combo._id, 'c1', `번호 질의 "${q}"`);
+  assert.equal(r[0].byNumber, true);
+}
+assert.equal(search(index, '140').combos[0].combo._id, 'c3'); // 14와 140은 다른 콤보
+assert.deepEqual(search(index, '999번 콤보').combos, []); // 없는 번호
+assert.ok(!search(index, '3점 가드').combos.some((h) => h.byNumber)); // 번호 형식이 아니면 번호 매칭 아님
 
 // 500개 이상에서도 빠른지 (인덱스는 한 번, 검색은 매 입력)
 const many = Array.from({ length: 1000 }, (_, i) => t(`테스트 기술 ${i}`, `Test Technique ${i}`, [`별칭 ${i}`]));

@@ -1,45 +1,42 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/db';
-import { authOptions } from '@/lib/auth';
 import Combo from '@/models/Combo';
 import User from '@/models/User';
+import { canViewCombo, findComboByParam, isComboPublished } from '@/lib/combo-service';
+import { getViewer, jsonError, NOT_FOUND, UNAUTHORIZED } from '@/lib/combo-api';
 
-export async function POST(
-  request: Request,
-  props: { params: Promise<{ id: string }> }
-) {
-  const params = await props.params;
+export async function POST(_request: Request, props: { params: Promise<{ id: string }> }) {
+  const { id } = await props.params;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    const viewer = await getViewer();
+    if (!viewer) return UNAUTHORIZED();
 
     await dbConnect();
-
-    const combo = await Combo.findById(params.id);
-    if (!combo) {
-      return NextResponse.json({ success: false, error: 'Combo not found' }, { status: 404 });
+    const combo = await findComboByParam(id);
+    if (!combo || !canViewCombo(combo, viewer)) return NOT_FOUND();
+    if (!isComboPublished(combo)) {
+      return NextResponse.json(
+        { success: false, error: '승인 후 이용할 수 있어요.' },
+        { status: 403 }
+      );
     }
 
-    const user = await User.findById(session.user.id).select('savedCombos');
+    const user = await User.findById(viewer.id).select('savedCombos');
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
 
-    const alreadySaved = user.savedCombos.some((id) => id.toString() === params.id);
-
+    const alreadySaved = user.savedCombos.some((c) => c.toString() === String(combo._id));
     let saveCount = combo.saveCount;
 
     if (alreadySaved) {
       const pull = await User.updateOne(
-        { _id: session.user.id },
-        { $pull: { savedCombos: combo._id } }
+        { _id: viewer.id },
+        { $pull: { savedCombos: combo._id, savedComboLog: { combo: combo._id } } }
       );
       if (pull.modifiedCount > 0) {
         const decremented = await Combo.findOneAndUpdate(
-          { _id: params.id, saveCount: { $gt: 0 } },
+          { _id: combo._id, saveCount: { $gt: 0 } },
           { $inc: { saveCount: -1 } },
           { new: true }
         );
@@ -47,12 +44,15 @@ export async function POST(
       }
     } else {
       const add = await User.updateOne(
-        { _id: session.user.id },
-        { $addToSet: { savedCombos: combo._id } }
+        { _id: viewer.id, savedCombos: { $ne: combo._id } },
+        {
+          $addToSet: { savedCombos: combo._id },
+          $push: { savedComboLog: { combo: combo._id, savedAt: new Date() } },
+        }
       );
       if (add.modifiedCount > 0) {
         const incremented = await Combo.findByIdAndUpdate(
-          params.id,
+          combo._id,
           { $inc: { saveCount: 1 } },
           { new: true }
         );
@@ -60,12 +60,8 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { saved: !alreadySaved, saveCount },
-    });
+    return NextResponse.json({ success: true, data: { saved: !alreadySaved, saveCount } });
   } catch (error) {
-    console.error('POST /api/combos/[id]/save error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to toggle save' }, { status: 500 });
+    return jsonError(error, 'POST /api/combos/[id]/save');
   }
 }

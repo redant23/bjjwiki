@@ -6,9 +6,18 @@ import { Bell } from 'lucide-react';
 
 interface NotificationItem {
   _id: string;
-  type: 'request_approved' | 'request_rejected' | 'new_request';
+  type:
+    | 'request_approved'
+    | 'request_rejected'
+    | 'new_request'
+    | 'combo_request_received'
+    | 'combo_approved'
+    | 'combo_rejected'
+    | 'combo_new_request';
   message: string;
   relatedRequestId: string;
+  /** 있으면 알림을 눌렀을 때 이 경로로 이동 */
+  link?: string;
   isRead: boolean;
   createdAt: string;
 }
@@ -47,7 +56,9 @@ export function NotificationBell() {
       // Non-fatal: a later poll will reconcile the list if this failed.
     }
     setIsOpen(false);
-    if (notification.type === 'new_request') {
+    if (notification.link) {
+      router.push(notification.link);
+    } else if (notification.type === 'new_request') {
       router.push(`/admin/requests/${notification.relatedRequestId}`);
     } else {
       router.push('/profile');

@@ -1,119 +1,94 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
-import { authOptions } from '@/lib/auth';
 import Combo from '@/models/Combo';
-import Technique from '@/models/Technique';
 import User from '@/models/User';
-import { isComboGearType } from '@/lib/combo-type';
+import {
+  COMBO_POPULATE,
+  listVisibleFilter,
+  loadSavedSet,
+  serializeCombo,
+  submitCombo,
+} from '@/lib/combo-service';
+import { getViewer, jsonError, UNAUTHORIZED } from '@/lib/combo-api';
 
+// 목록: 공개된 콤보 + 본인의 승인 대기 콤보(관리자는 모든 대기 콤보).
+// ?sort=recent(공개일 최신순) | popular(기본) ?saved=1(내가 저장한 콤보만, 최근 저장순)
 export async function GET(request: Request) {
   try {
     await dbConnect();
+    const viewer = await getViewer();
     const { searchParams } = new URL(request.url);
-    const sort = searchParams.get('sort');
+    const sort = searchParams.get('sort') === 'recent' ? 'recent' : 'popular';
+    const savedOnly = searchParams.get('saved') === '1';
 
-    const sortOptions: any = sort === 'recent' ? { createdAt: -1 } : { saveCount: -1 };
-
-    const combos: any[] = await Combo.find()
-      .sort(sortOptions)
-      .populate('techniques', 'name slug pathSlugs')
-      .populate('createdBy', 'nickname')
-      .lean();
-
-    const session = await getServerSession(authOptions);
-    let savedSet = new Set<string>();
-    if (session) {
-      const user = await User.findById(session.user.id).select('savedCombos').lean();
-      savedSet = new Set((user?.savedCombos || []).map((id: any) => id.toString()));
+    const filter: Record<string, unknown> = listVisibleFilter(viewer);
+    let savedAtById = new Map<string, number>();
+    if (savedOnly) {
+      if (!viewer) return UNAUTHORIZED();
+      const user: any = await User.findById(viewer.id).select('savedCombos savedComboLog').lean();
+      const ids = (user?.savedCombos ?? []).map((id: any) => String(id));
+      savedAtById = new Map<string, number>(
+        (user?.savedComboLog ?? []).map((l: any) => [String(l.combo), new Date(l.savedAt).getTime()])
+      );
+      filter.$and = [{ _id: { $in: ids } }, { status: { $nin: ['pending', 'rejected'] } }];
     }
 
-    const data = combos.map((combo) => ({
-      ...combo,
-      savedByMe: savedSet.has(combo._id.toString()),
-    }));
+    const docs: any[] = await Combo.find(filter)
+      .populate([...COMBO_POPULATE].slice(0, 2))
+      .lean();
 
-    return NextResponse.json({ success: true, data });
+    const savedSet = await loadSavedSet(viewer);
+    const items = docs.map((doc) => serializeCombo(doc, viewer, savedSet));
+
+    const popularity = (a: any, b: any) =>
+      b.saveCount - a.saveCount || (b.number ?? 0) - (a.number ?? 0);
+    const recency = (a: any, b: any) =>
+      new Date(b.publishedAt ?? b.createdAt ?? 0).getTime() -
+        new Date(a.publishedAt ?? a.createdAt ?? 0).getTime() || (b.number ?? 0) - (a.number ?? 0);
+
+    if (savedOnly) {
+      // 저장 시각이 기록된 것은 최근 저장순, 기록이 없는 기존 저장분은 그 뒤에 콤보 번호순.
+      items.sort((a, b) => {
+        const ta = savedAtById.get(a._id);
+        const tb = savedAtById.get(b._id);
+        if (ta !== undefined && tb !== undefined) return tb - ta;
+        if (ta !== undefined) return -1;
+        if (tb !== undefined) return 1;
+        return (a.number ?? 0) - (b.number ?? 0);
+      });
+    } else {
+      items.sort(sort === 'recent' ? recency : popularity);
+    }
+
+    return NextResponse.json({ success: true, data: items });
   } catch (error) {
-    console.error('GET /api/combos error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch combos' }, { status: 500 });
+    return jsonError(error, 'GET /api/combos');
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    const viewer = await getViewer();
+    if (!viewer) return UNAUTHORIZED();
 
-    const body = await request.json();
-    const techniqueIds: string[] = Array.isArray(body.techniques) ? body.techniques : [];
+    const body = await request.json().catch(() => ({}));
+    const { combo, request: comboRequest, published } = await submitCombo(viewer, body);
 
-    if (
-      techniqueIds.length < 2 ||
-      !techniqueIds.every((id) => mongoose.Types.ObjectId.isValid(id))
-    ) {
-      return NextResponse.json(
-        { success: false, error: '기술은 2개 이상, 유효한 ID여야 합니다.' },
-        { status: 400 }
-      );
-    }
-
-    if (!isComboGearType(body.gearType)) {
-      return NextResponse.json(
-        { success: false, error: '영상 복장(기/노기)을 선택해주세요.' },
-        { status: 400 }
-      );
-    }
-
-    await dbConnect();
-
-    const uniqueTechniqueIds = [...new Set(techniqueIds)];
-    const existingCount = await Technique.countDocuments({ _id: { $in: uniqueTechniqueIds } });
-    if (existingCount !== uniqueTechniqueIds.length) {
-      return NextResponse.json(
-        { success: false, error: '존재하지 않는 기술이 포함되어 있습니다.' },
-        { status: 400 }
-      );
-    }
-
-    const techniqueObjectIds = techniqueIds.map((id) => new mongoose.Types.ObjectId(id));
-
-    // MongoDB matches an array field against a plain array value only when
-    // the elements, order, and length are all identical — exactly the
-    // "same chain, same order" duplicate we want to reject.
-    const duplicate = await Combo.findOne({ techniques: techniqueObjectIds });
-    if (duplicate) {
-      return NextResponse.json(
-        { success: false, error: '이미 등록된 콤보입니다.' },
-        { status: 400 }
-      );
-    }
-
-    // 이름을 직접 입력하면 그대로 쓰고, 비우면 "{닉네임} 콤보N"으로 자동 생성한다.
-    const customName = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
-    let name = customName;
-    if (!name) {
-      const comboCount = await Combo.countDocuments({ createdBy: session.user.id });
-      const nickname = session.user.name || '유저';
-      name = `${nickname} 콤보${comboCount + 1}`;
-    }
-
-    const combo = await Combo.create({
-      name,
-      techniques: techniqueObjectIds,
-      gearType: body.gearType,
-      videoUrl: body.videoUrl || undefined,
-      photoUrl: body.photoUrl || undefined,
-      createdBy: session.user.id,
-      saveCount: 0,
-    });
-
-    return NextResponse.json({ success: true, data: combo });
+    return NextResponse.json(
+      {
+        success: true,
+        data: {
+          _id: String(combo._id),
+          number: combo.number ?? null,
+          status: combo.status,
+          requestId: comboRequest ? String(comboRequest._id) : null,
+          published,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error('POST /api/combos error:', error);
-    return NextResponse.json({ success: false, error: 'Failed to create combo' }, { status: 500 });
+    return jsonError(error, 'POST /api/combos');
   }
 }

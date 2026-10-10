@@ -17,6 +17,8 @@ export interface IUser extends Document {
   period?: Date;
   mySkills: IUserSkill[];
   savedCombos: mongoose.Types.ObjectId[];
+  /** 콤보 저장 시각 기록. 기존 저장분은 없을 수 있다(그땐 콤보 번호순) */
+  savedComboLog: { combo: mongoose.Types.ObjectId; savedAt: Date }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -80,6 +82,15 @@ const UserSchema: Schema = new Schema(
     period: { type: Date },
     mySkills: { type: [UserSkillSchema], default: [] },
     savedCombos: { type: [{ type: Schema.Types.ObjectId, ref: 'Combo' }], default: [] },
+    savedComboLog: {
+      type: [
+        new Schema(
+          { combo: { type: Schema.Types.ObjectId, ref: 'Combo', required: true }, savedAt: { type: Date, required: true } },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
   },
   { timestamps: true }
 );

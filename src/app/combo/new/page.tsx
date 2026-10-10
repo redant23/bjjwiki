@@ -1,146 +1,100 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Search, X, ArrowUp, ArrowDown, Upload, Loader2 } from 'lucide-react';
-import imageCompression from 'browser-image-compression';
-import GearTypeSelect from '@/components/combo/GearTypeSelect';
-import type { ComboGearType } from '@/lib/combo-type';
-import { buildSearchIndex, search, type SearchTechniqueInput } from '@/lib/search';
+import { TechniqueChainEditor, type ChainItem } from '@/components/combo/TechniqueChainEditor';
+import { DemoFields, EMPTY_DEMO, type DemoFormValue } from '@/components/combo/DemoFields';
 
-type SearchResult = SearchTechniqueInput;
-
-interface ChainItem {
-  _id: string;
-  name: { ko: string; en?: string };
+interface DuplicateInfo {
+  status: 'published' | 'pending';
+  number?: number | null;
+  _id?: string;
+  mine?: boolean;
 }
 
-export default function NewComboPage() {
-  const { status } = useSession();
+function NewComboForm() {
+  const { status, data: session } = useSession();
   const router = useRouter();
+  const resubmitId = useSearchParams().get('resubmit');
+  const isAdmin = session?.user?.role === 'admin';
 
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [techniques, setTechniques] = useState<SearchTechniqueInput[] | null>(null);
-  const [name, setName] = useState('');
   const [chain, setChain] = useState<ChainItem[]>([]);
-  const [gearType, setGearType] = useState<ComboGearType | ''>('');
-  const [videoUrl, setVideoUrl] = useState('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState('');
+  const [demo, setDemo] = useState<DemoFormValue>(EMPTY_DEMO);
+  const [duplicate, setDuplicate] = useState<DuplicateInfo | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    }
+    if (status === 'unauthenticated') router.push('/auth/signin');
   }, [status, router]);
 
-  // ⌘K와 같은 검색 로직: 목록을 한 번 받아 브라우저에서 정규화·랭킹한다.
+  // 반려된 요청을 수정해 다시 내는 경우: 기존 값을 채워 둔다.
   useEffect(() => {
-    fetch('/api/search-index', { cache: 'no-store' })
-      .then((res) => res.json())
+    if (!resubmitId || status !== 'authenticated') return;
+    fetch('/api/combo-requests?mine=1&status=rejected')
+      .then((r) => r.json())
       .then((json) => {
-        if (json.success) setTechniques(json.data.techniques);
+        const req = json.success && json.data.find((r: any) => r._id === resubmitId);
+        if (!req?.combo) return;
+        setChain(req.combo.techniques.map((t: any) => ({ _id: t._id, name: t.name })));
+        const d = req.payload?.demo ?? req.combo.demos?.[0];
+        if (d) {
+          setDemo({
+            performer: d.performer ?? '',
+            videoUrl: d.videoUrl ?? '',
+            gearType: d.gearType ?? 'unknown',
+          });
+        }
       })
-      .catch((error) => console.error('Failed to load techniques:', error));
-  }, []);
+      .catch(() => undefined);
+  }, [resubmitId, status]);
 
+  // 기술을 추가/변경할 때마다 같은 순서의 콤보가 있는지 확인한다.
   useEffect(() => {
-    const id = setTimeout(() => setDebouncedQuery(query), 80);
-    return () => clearTimeout(id);
-  }, [query]);
-
-  const searchIndex = useMemo(() => (techniques ? buildSearchIndex(techniques) : null), [techniques]);
-  const results: SearchResult[] = useMemo(
-    () =>
-      searchIndex && query.trim()
-        ? search(searchIndex, debouncedQuery).techniques.slice(0, 30).map((h) => h.technique)
-        : [],
-    [searchIndex, debouncedQuery, query]
-  );
-  const searching = !!query.trim() && !techniques;
-
-  function addToChain(result: SearchResult) {
-    setChain((prev) => [...prev, { _id: result._id, name: result.name }]);
-    setQuery('');
-    setDebouncedQuery('');
-  }
-
-  function removeFromChain(index: number) {
-    setChain((prev) => prev.filter((_, i) => i !== index));
-  }
-
-  function moveInChain(index: number, direction: 'up' | 'down') {
-    setChain((prev) => {
-      const next = [...prev];
-      const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= next.length) return prev;
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return next;
-    });
-  }
-
-  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await imageCompression(file, {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      });
-      setPhotoFile(compressed);
-      setPreviewUrl(URL.createObjectURL(compressed));
-      setError('');
-    } catch (error) {
-      console.error('Image compression failed:', error);
-      setError('이미지 압축에 실패했습니다.');
+    if (chain.length < 2) {
+      setDuplicate(null);
+      return;
     }
-  }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      fetch(`/api/combos/check?chain=${chain.map((c) => c._id).join(',')}`)
+        .then((r) => r.json())
+        .then((json) => {
+          if (!cancelled && json.success) setDuplicate(json.data.duplicate);
+        })
+        .catch(() => undefined);
+    }, 200);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [chain]);
 
-  function removePhoto() {
-    setPhotoFile(null);
-    setPreviewUrl('');
-  }
+  const hasDemoInput = demo.performer.trim() || demo.videoUrl.trim();
+  const canSubmit = chain.length >= 2 && !duplicate && !saving;
 
   async function handleSubmit() {
-    if (chain.length < 2 || !gearType) return;
-
     setSaving(true);
     setError('');
     try {
-      let photoUrl = '';
-      if (photoFile) {
-        const formData = new FormData();
-        formData.append('file', photoFile);
-        formData.append('usage', 'combo_photo');
-        const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
-        const uploadData = await uploadRes.json();
-        if (!uploadData.success) {
-          throw new Error('이미지 업로드에 실패했습니다.');
-        }
-        photoUrl = uploadData.data.url;
-      }
-
-      const res = await fetch('/api/combos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim() || undefined,
-          techniques: chain.map((c) => c._id),
-          gearType,
-          videoUrl: videoUrl.trim() || undefined,
-          photoUrl: photoUrl || undefined,
-        }),
-      });
+      const body = {
+        techniques: chain.map((c) => c._id),
+        demo: hasDemoInput ? demo : undefined,
+      };
+      const res = await fetch(
+        resubmitId ? `/api/combo-requests/${resubmitId}/resubmit` : '/api/combos',
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
       const data = await res.json();
       if (data.success) {
-        router.push(`/combo/${data.data._id}`);
+        if (data.data.published) router.push(`/combo/${data.data.number}`);
+        else if (data.data._id) router.push(`/combo/pending/${data.data._id}`);
+        else router.push('/profile/combo-requests');
       } else {
+        if (data.existing) setDuplicate(data.existing);
         setError(data.error || '등록하지 못했습니다.');
       }
     } catch (err) {
@@ -151,168 +105,87 @@ export default function NewComboPage() {
     }
   }
 
-  if (status !== 'authenticated') {
-    return null;
-  }
+  if (status !== 'authenticated') return null;
 
   return (
     <div className="container max-w-2xl py-6 lg:py-10">
-      <h1 className="text-3xl font-bold mb-6">콤보 등록</h1>
+      <h1 className="mb-2 text-3xl font-bold">{resubmitId ? '콤보 다시 요청' : '콤보 등록'}</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        {isAdmin
+          ? '관리자는 등록 즉시 공개되고 번호가 부여돼요.'
+          : '등록하면 관리자 승인 후 전체 공개되고, 그때 번호가 부여돼요.'}
+      </p>
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium mb-2">콤보 이름 (선택)</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            maxLength={50}
-            placeholder="비워두면 자동으로 이름이 붙습니다 (예: 닉네임 콤보1)"
-            className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <label className="mb-2 block text-sm font-medium">기술 순서</label>
+          <TechniqueChainEditor chain={chain} onChange={setChain} disabled={saving} />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-2">기술 체인</label>
-
-          {chain.length > 0 && (
-            <ul className="space-y-2 mb-3">
-              {chain.map((item, index) => (
-                <li
-                  key={`${item._id}-${index}`}
-                  className="flex items-center justify-between rounded-md border p-3"
-                >
-                  <span>
-                    <span className="text-muted-foreground mr-2">{index + 1}.</span>
-                    {item.name.ko}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => moveInChain(index, 'up')}
-                      disabled={index === 0}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => moveInChain(index, 'down')}
-                      disabled={index === chain.length - 1}
-                      className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-30"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => removeFromChain(index)}
-                      className="p-1 rounded text-muted-foreground hover:text-destructive"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {chain.length < 2 && (
-            <p className="text-sm text-muted-foreground mb-3">
-              기술을 최소 2개 이상 추가해야 합니다. (현재 {chain.length}개)
-            </p>
-          )}
-
-          <div className="relative">
-            <div className="flex items-center border rounded-md px-3">
-              <Search className="h-4 w-4 text-muted-foreground mr-2" />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="기술 검색 후 추가..."
-                className="flex-1 py-2 bg-transparent outline-none text-sm"
-              />
-              {searching && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            </div>
-
-            {results.length > 0 && (
-              <ul className="absolute z-10 w-full mt-1 rounded-md border bg-background shadow-lg max-h-64 overflow-y-auto">
-                {results.map((result) => (
-                  <li key={result._id}>
-                    <button
-                      onClick={() => addToChain(result)}
-                      className="w-full text-left px-4 py-2 hover:bg-muted/50 text-sm"
-                    >
-                      {result.name.ko}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">영상 복장</label>
-          <GearTypeSelect value={gearType} onChange={setGearType} disabled={saving} />
-          {!gearType && (
-            <p className="text-sm text-muted-foreground mt-2">
-              시연 영상에서 입은 복장을 선택해주세요.
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">시연 영상 URL (선택)</label>
-          <input
-            type="text"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
-            placeholder="https://www.youtube.com/watch?v=..."
-            className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-2">시연 사진 (선택)</label>
-          {previewUrl ? (
-            <div className="relative w-full max-w-xs">
-              <img src={previewUrl} alt="미리보기" className="rounded-md border w-full" />
-              <button
-                onClick={removePhoto}
-                className="absolute top-2 right-2 p-1 rounded-full bg-background/80 hover:bg-destructive/10 text-destructive"
+        {duplicate?.status === 'published' && (
+          <div role="alert" className="space-y-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <p className="font-medium">이미 등록된 콤보예요. 시연 영상과 시전자를 추가 요청할 수 있어요.</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={`/combo/${duplicate.number ?? duplicate._id}`}
+                className="rounded-md border border-amber-400 bg-background px-3 py-1.5 font-medium text-foreground hover:bg-muted/50"
               >
-                <X className="h-4 w-4" />
-              </button>
+                기존 콤보 보기
+              </Link>
+              <Link
+                href={`/combo/${duplicate.number ?? duplicate._id}?addDemo=1`}
+                className="rounded-md bg-primary px-3 py-1.5 font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                시연 추가 요청
+              </Link>
             </div>
-          ) : (
-            <label className="flex items-center gap-2 w-fit px-4 py-2 border border-dashed rounded-md cursor-pointer text-sm text-muted-foreground hover:bg-muted/30">
-              <Upload className="h-4 w-4" />
-              사진 선택
-              <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-            </label>
-          )}
-        </div>
-
-        {error && (
-          <div className="p-3 bg-destructive/10 text-destructive rounded-md text-sm">
-            {error}
+          </div>
+        )}
+        {duplicate?.status === 'pending' && (
+          <div role="alert" className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+            <p className="font-medium">같은 순서가 이미 승인 대기 중이에요.</p>
+            {duplicate.mine && duplicate._id && (
+              <Link href={`/combo/pending/${duplicate._id}`} className="font-medium underline">
+                내 대기 콤보 보기
+              </Link>
+            )}
           </div>
         )}
 
-        <div className="flex gap-2 justify-end">
+        <div className="rounded-md border p-4">
+          <h2 className="mb-1 text-sm font-semibold">첫 시연 (선택)</h2>
+          <p className="mb-4 text-xs text-muted-foreground">
+            시전자와 영상 중 하나만 있어도 돼요. 콤보가 승인되면 함께 공개됩니다.
+          </p>
+          <DemoFields value={demo} onChange={setDemo} disabled={saving} />
+        </div>
+
+        {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+
+        <div className="flex justify-end gap-2">
           <Link
             href="/combo"
-            className="flex items-center px-4 py-2 rounded-md bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+            className="flex items-center rounded-md bg-muted px-4 py-2 text-muted-foreground transition-colors hover:bg-muted/80"
           >
             취소
           </Link>
           <button
             onClick={handleSubmit}
-            disabled={chain.length < 2 || !gearType || saving}
-            className="flex items-center px-4 py-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+            disabled={!canSubmit}
+            className="flex items-center rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            {saving ? '등록 중...' : '등록'}
+            {saving ? '등록 중...' : isAdmin ? '등록' : '등록 요청'}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewComboPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewComboForm />
+    </Suspense>
   );
 }

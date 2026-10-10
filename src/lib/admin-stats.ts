@@ -2,6 +2,7 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Technique from '@/models/Technique';
 import Combo from '@/models/Combo';
+import { PUBLISHED_FILTER } from '@/lib/combo-service';
 import TechniqueView from '@/models/TechniqueView';
 import { canonicalTechniquePath } from '@/lib/technique-url';
 
@@ -136,8 +137,8 @@ export async function getAdminStats(): Promise<AdminStats> {
     User.countDocuments({ createdAt: { $gte: since(30) } }),
     Technique.countDocuments({ status: 'published' }),
     Technique.countDocuments({ status: 'published', createdAt: { $gte: since(7) } }),
-    Combo.countDocuments(),
-    Combo.countDocuments({ createdAt: { $gte: since(7) } }),
+    Combo.countDocuments(PUBLISHED_FILTER),
+    Combo.countDocuments({ ...PUBLISHED_FILTER, createdAt: { $gte: since(7) } }),
     User.aggregate<{ _id: string; count: number }>([
       { $match: { createdAt: { $gte: chartStart } } },
       {

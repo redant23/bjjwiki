@@ -1,37 +1,51 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { Plus } from 'lucide-react';
-import { comboMatchesType, type ComboTypeFilter } from '@/lib/combo-type';
+import { Bookmark, Plus, X } from 'lucide-react';
+import { normalizePerformer } from '@/lib/combo-chain';
 import { ComboCard, ComboCardSkeleton, type ComboListItem } from '@/components/combo/ComboCard';
 
 type SortOption = 'popular' | 'recent';
+type GearFilter = 'all' | 'gi' | 'nogi';
 
 const SORT_OPTIONS = [['popular', '인기순'], ['recent', '최신순']] as const;
 
-const TYPE_FILTERS: Array<{ value: ComboTypeFilter; label: string }> = [
+const TYPE_FILTERS: Array<{ value: GearFilter; label: string }> = [
   { value: 'all', label: '전체' },
   { value: 'gi', label: '기' },
   { value: 'nogi', label: '노기' },
 ];
 
-export default function ComboListPage() {
+const segmentClass = (active: boolean) =>
+  `h-8 whitespace-nowrap rounded px-2.5 text-sm transition-colors md:px-3 ${
+    active
+      ? 'bg-background font-semibold text-foreground shadow-sm'
+      : 'text-muted-foreground hover:text-foreground'
+  }`;
+
+function ComboListContent() {
   const router = useRouter();
-  const { status } = useSession();
+  const { status, data: session } = useSession();
+  const isAdmin = session?.user?.role === 'admin';
+  const searchParams = useSearchParams();
+  const performerFilter = searchParams.get('performer')?.trim() || '';
+
   const [combos, setCombos] = useState<ComboListItem[] | null>(null);
   const [error, setError] = useState('');
   const [sort, setSort] = useState<SortOption>('popular');
-  const [typeFilter, setTypeFilter] = useState<ComboTypeFilter>('all');
+  const [gearFilter, setGearFilter] = useState<GearFilter>('all');
+  const [savedOnly, setSavedOnly] = useState(false);
+  const [loginHint, setLoginHint] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     async function fetchCombos() {
       try {
-        const query = sort === 'recent' ? '?sort=recent' : '';
-        const res = await fetch(`/api/combos${query}`);
+        const res = await fetch(`/api/combos?sort=${sort}`);
         const data = await res.json();
         if (cancelled) return;
         if (data.success) {
@@ -41,16 +55,14 @@ export default function ComboListPage() {
           setError(data.error || '콤보 목록을 불러오지 못했습니다.');
         }
       } catch {
-        if (!cancelled) {
-          setError('오류가 발생했습니다.');
-        }
+        if (!cancelled) setError('오류가 발생했습니다.');
       }
     }
     fetchCombos();
     return () => {
       cancelled = true;
     };
-  }, [sort]);
+  }, [sort, status]);
 
   async function handleSave(comboId: string) {
     if (status !== 'authenticated') {
@@ -65,9 +77,7 @@ export default function ComboListPage() {
         setCombos((prev) =>
           prev
             ? prev.map((c) =>
-                c._id === comboId
-                  ? { ...c, savedByMe: data.data.saved, saveCount: data.data.saveCount }
-                  : c
+                c._id === comboId ? { ...c, savedByMe: data.data.saved, saveCount: data.data.saveCount } : c
               )
             : prev
         );
@@ -82,16 +92,38 @@ export default function ComboListPage() {
     }
   }
 
-  const visibleCombos = combos
-    ? combos.filter((c) => comboMatchesType(c.gearType, typeFilter))
+  const published = combos?.filter((c) => c.status !== 'pending') ?? null;
+  const pendingMine = combos?.filter((c) => c.status === 'pending') ?? [];
+  const savedCount = published?.filter((c) => c.savedByMe).length ?? 0;
+
+  const visibleCombos = published
+    ? published.filter((c) => {
+        if (gearFilter !== 'all' && !c.demos.some((d) => d.gearType === gearFilter)) return false;
+        if (savedOnly && !c.savedByMe) return false;
+        if (performerFilter) {
+          const wanted = normalizePerformer(performerFilter);
+          if (!c.demos.some((d) => normalizePerformer(d.performer) === wanted)) return false;
+        }
+        return true;
+      })
     : null;
 
   function handleRegisterClick() {
     router.push(status === 'authenticated' ? '/combo/new' : '/auth/signin');
   }
 
+  function toggleSavedOnly() {
+    if (status !== 'authenticated') {
+      setLoginHint(true);
+      return;
+    }
+    setSavedOnly((v) => !v);
+  }
+
   function resetFilters() {
-    setTypeFilter('all');
+    setGearFilter('all');
+    setSavedOnly(false);
+    if (performerFilter) router.replace('/combo');
   }
 
   const filters = (
@@ -103,11 +135,7 @@ export default function ComboListPage() {
             type="button"
             onClick={() => setSort(value)}
             aria-pressed={sort === value}
-            className={`h-8 whitespace-nowrap rounded px-3 text-sm transition-colors ${
-              sort === value
-                ? 'bg-background font-semibold text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={segmentClass(sort === value)}
           >
             {label}
           </button>
@@ -118,18 +146,27 @@ export default function ComboListPage() {
           <button
             key={f.value}
             type="button"
-            onClick={() => setTypeFilter(f.value)}
-            aria-pressed={typeFilter === f.value}
-            className={`h-8 whitespace-nowrap rounded px-3 text-sm transition-colors ${
-              typeFilter === f.value
-                ? 'bg-background font-semibold text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            onClick={() => setGearFilter(f.value)}
+            aria-pressed={gearFilter === f.value}
+            className={segmentClass(gearFilter === f.value)}
           >
             {f.label}
           </button>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={toggleSavedOnly}
+        aria-pressed={savedOnly}
+        className={`flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border px-2.5 text-sm md:gap-1.5 md:px-3 transition-colors ${
+          savedOnly
+            ? 'border-rose-300 bg-rose-50 font-semibold text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
+            : 'border-input text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        <Bookmark className={`h-3.5 w-3.5 ${savedOnly ? 'fill-current' : ''}`} />
+        저장함{status === 'authenticated' ? ` ${savedCount}` : ''}
+      </button>
     </div>
   );
 
@@ -155,8 +192,39 @@ export default function ComboListPage() {
       </div>
 
       <div className="mt-4">
-        {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 p-4 text-destructive">{error}</div>
+        {loginHint && status !== 'authenticated' && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-md border bg-muted/40 p-3 text-sm">
+            <span>저장한 콤보를 보려면 로그인이 필요해요.</span>
+            <Link href="/auth/signin" className="shrink-0 font-medium text-primary hover:underline">
+              로그인
+            </Link>
+          </div>
+        )}
+
+        {performerFilter && (
+          <div className="mb-4 flex items-center gap-2 text-sm">
+            <span className="rounded-full bg-muted px-3 py-1">
+              시전자: <strong>{performerFilter}</strong>
+            </span>
+            <Link href="/combo" aria-label="시전자 필터 해제" className="rounded p-1 text-muted-foreground hover:bg-muted">
+              <X className="h-4 w-4" />
+            </Link>
+          </div>
+        )}
+
+        {error && <div className="mb-4 rounded-md bg-destructive/10 p-4 text-destructive">{error}</div>}
+
+        {pendingMine.length > 0 && !performerFilter && (
+          <section className="mb-6" aria-label={isAdmin ? '승인 대기' : '내 승인 대기'}>
+            <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+              {isAdmin ? '승인 대기 (전체)' : '내 승인 대기'}
+            </h2>
+            <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-[repeat(auto-fill,minmax(340px,1fr))] md:gap-4">
+              {pendingMine.map((combo) => (
+                <ComboCard key={combo._id} combo={combo} saving={false} onToggleSave={handleSave} />
+              ))}
+            </div>
+          </section>
         )}
 
         {combos === null && !error && (
@@ -167,13 +235,15 @@ export default function ComboListPage() {
           </div>
         )}
 
-        {combos && combos.length === 0 && (
+        {published && published.length === 0 && pendingMine.length === 0 && (
           <p className="text-muted-foreground">등록된 콤보가 없어요. 첫 콤보를 등록해보세요.</p>
         )}
 
-        {combos && combos.length > 0 && visibleCombos && visibleCombos.length === 0 && (
+        {published && published.length > 0 && visibleCombos && visibleCombos.length === 0 && (
           <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed py-12 text-center">
-            <p className="text-muted-foreground">조건에 맞는 콤보가 없어요</p>
+            <p className="text-muted-foreground">
+              {savedOnly && savedCount === 0 ? '아직 저장한 콤보가 없어요' : '조건에 맞는 콤보가 없어요'}
+            </p>
             <button
               type="button"
               onClick={resetFilters}
@@ -198,5 +268,13 @@ export default function ComboListPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ComboListPage() {
+  return (
+    <Suspense fallback={null}>
+      <ComboListContent />
+    </Suspense>
   );
 }

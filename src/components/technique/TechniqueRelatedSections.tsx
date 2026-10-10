@@ -24,7 +24,7 @@ interface RelatedData {
   next: RelatedTechnique | null;
   combos: Array<{
     _id: string;
-    name: string;
+    number: number | null;
     saveCount: number;
     chain: Array<{ _id: string; name: string; href: string }>;
   }>;
@@ -95,8 +95,8 @@ export function TechniqueRelatedSections({
                 className="relative rounded-lg border border-border bg-card px-4 py-3 transition-all hover:border-primary/50 hover:bg-accent/30"
               >
                 <div className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <Link href={`/combo/${c._id}`} className="truncate hover:underline after:absolute after:inset-0">
-                    {c.name}
+                  <Link href={`/combo/${c.number ?? c._id}`} className="truncate hover:underline after:absolute after:inset-0">
+                    {c.number ? `${c.number}번 콤보` : '콤보'}
                   </Link>
                   {c.saveCount > 0 && <span className="shrink-0">저장 {c.saveCount}</span>}
                 </div>

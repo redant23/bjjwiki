@@ -4,6 +4,8 @@ import mongoose from 'mongoose';
 import '@/models/User';
 import '@/models/Technique';
 import '@/models/Combo';
+import '@/models/ComboRequest';
+import '@/models/Counter';
 import '@/models/TechniqueRequest';
 import '@/models/Notification';
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Edit, Save, X } from 'lucide-react';
 import { MySkillsSection } from '@/components/profile/MySkillsSection';
@@ -320,6 +321,25 @@ export default function ProfilePage() {
             </>
           )}
         </div>
+      )}
+
+      {profile && (
+        <nav className="mt-6 grid grid-cols-2 gap-3" aria-label="내 콤보">
+          <Link
+            href="/profile/saved-combos"
+            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-sm font-medium hover:bg-muted/40"
+          >
+            저장한 콤보
+            <span aria-hidden="true">→</span>
+          </Link>
+          <Link
+            href="/profile/combo-requests"
+            className="flex items-center justify-between rounded-lg border bg-card px-4 py-3 text-sm font-medium hover:bg-muted/40"
+          >
+            내 콤보 요청
+            <span aria-hidden="true">→</span>
+          </Link>
+        </nav>
       )}
 
       {profile && <MySkillsSection />}

@@ -1,68 +1,53 @@
-'use client';
+import Link from 'next/link';
 
-import { useLayoutEffect, useRef, useState } from 'react';
+export interface ChipItem {
+  name: string;
+  /** 있으면 칩이 링크가 된다 (상세 페이지). 카드에서는 비워 클릭 불가로 둔다 */
+  href?: string;
+}
 
-// 칩 높이 28px(h-7) + 줄 간격 4px(gap-y-1). 3번째 줄은 top이 64px부터 시작한다.
-const THIRD_ROW_TOP = 48;
+const CHIP_CLASS =
+  'inline-flex h-[30px] max-w-full items-center gap-1.5 rounded-full bg-muted pl-1.5 pr-3 text-sm font-medium text-foreground md:text-[15px]';
 
-/** 기술 순서 칩. 최대 2줄까지만 보이고 넘치면 마지막에 "+N" 칩을 둔다. 칩은 클릭 대상이 아니다. */
-export function ComboChips({ names }: { names: string[] }) {
-  const total = names.length;
-  const ref = useRef<HTMLDivElement>(null);
-  const [limit, setLimit] = useState(total);
-  const [tick, setTick] = useState(0);
-  const widthRef = useRef(0);
-  const shown = Math.min(limit, total);
-  const hidden = total - shown;
-
-  // 폭이 바뀌면 다시 전부 펼친 뒤 측정한다.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const width = Math.round(entry.contentRect.width);
-      if (width === widthRef.current) return;
-      widthRef.current = width;
-      setLimit(total);
-      setTick((t) => t + 1);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [total]);
-
-  // 3번째 줄로 밀린 요소가 있으면 하나씩 줄여 +N 칩까지 2줄에 들어오게 한다.
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const overflowIndex = Array.from(el.children).findIndex(
-      (child) => (child as HTMLElement).offsetTop >= THIRD_ROW_TOP
-    );
-    if (overflowIndex === -1) return;
-    setLimit(Math.max(1, Math.min(overflowIndex, shown - 1)));
-  }, [shown, total, tick]);
-
-  const chipClass =
-    'inline-flex h-7 max-w-full items-center rounded-full bg-muted px-2.5 text-[13px] md:text-sm font-medium text-foreground';
-
+/**
+ * 기술 순서 칩. 접지 않고 전부 보여 주며 줄바꿈을 허용한다.
+ * 화살표는 뒤따르는 칩과 한 덩어리(nowrap)로 묶어, 줄 끝/줄 시작에 홀로 남지 않는다.
+ */
+export function ComboChips({ items, className = '' }: { items: ChipItem[]; className?: string }) {
   return (
-    <div
-      ref={ref}
-      className="relative flex max-h-[60px] flex-wrap items-center gap-x-1 gap-y-1 overflow-hidden"
-      aria-label={`기술 순서: ${names.join(' → ')}`}
+    <ol
+      className={`flex flex-wrap items-center gap-x-1.5 gap-y-1.5 ${className}`}
+      aria-label={`기술 순서: ${items.map((i) => i.name).join(' → ')}`}
     >
-      {names.slice(0, shown).map((name, index) => (
-        <span key={index} className="inline-flex max-w-full items-center gap-1">
-          <span className={`${chipClass} truncate`}>{name}</span>
-          {(index < total - 1) && (
-            <span className="text-muted-foreground" aria-hidden="true">→</span>
-          )}
-        </span>
-      ))}
-      {hidden > 0 && (
-        <span className={chipClass} title={names.slice(shown).join(', ')}>
-          +{hidden}
-        </span>
-      )}
-    </div>
+      {items.map((item, index) => {
+        const body = (
+          <>
+            <span
+              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-background text-xs font-semibold tabular-nums text-muted-foreground"
+              aria-hidden="true"
+            >
+              {index + 1}
+            </span>
+            <span className="truncate">{item.name}</span>
+          </>
+        );
+        return (
+          <li key={index} className="inline-flex max-w-full items-center gap-1.5">
+            {index > 0 && (
+              <span className="text-muted-foreground" aria-hidden="true">
+                →
+              </span>
+            )}
+            {item.href ? (
+              <Link href={item.href} className={`${CHIP_CLASS} transition-colors hover:bg-muted/60`}>
+                {body}
+              </Link>
+            ) : (
+              <span className={CHIP_CLASS}>{body}</span>
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }

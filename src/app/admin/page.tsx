@@ -89,6 +89,12 @@ export default function AdminDashboard() {
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Link
+            href="/admin/combo-requests"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
+          >
+            콤보 요청
+          </Link>
+          <Link
             href="/admin/reorganize"
             className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted/50"
           >

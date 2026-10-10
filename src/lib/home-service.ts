@@ -1,6 +1,7 @@
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import Combo from '@/models/Combo';
+import { PUBLISHED_FILTER } from '@/lib/combo-service';
 import { unstable_cache } from 'next/cache';
 import { CARD_FIELDS, toTechniqueCard, type TechniqueCardData } from '@/lib/technique-card-data';
 import { pickDailyIndex } from '@/lib/home-picks';
@@ -18,7 +19,7 @@ export interface HomeCategory {
 
 export interface HomeCombo {
   _id: string;
-  name: string;
+  number: number | null;
   chain: string[];
   saveCount: number;
 }
@@ -75,11 +76,11 @@ export const getHomeData = unstable_cache(
       .select(CARD_FIELDS)
       .lean();
 
-    const comboDocs = await Combo.find()
+    const comboDocs = await Combo.find(PUBLISHED_FILTER)
       .sort({ saveCount: -1, createdAt: -1 })
       .limit(COMBO_COUNT)
       .populate('techniques', 'name.ko')
-      .select('name techniques saveCount')
+      .select('number techniques saveCount')
       .lean();
 
     return {
@@ -88,7 +89,7 @@ export const getHomeData = unstable_cache(
       categories,
       combos: comboDocs.map((c) => ({
         _id: c._id.toString(),
-        name: c.name as string,
+        number: typeof c.number === 'number' ? c.number : null,
         // populate된 기술 중 삭제되어 null이 된 항목은 건너뛴다
         chain: (c.techniques as unknown as Array<{ name?: { ko?: string } } | null>)
           .map((t) => t?.name?.ko)

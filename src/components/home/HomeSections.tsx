@@ -65,11 +65,11 @@ function CategoryLink({ category }: { category: HomeCategory }) {
 function ComboLink({ combo }: { combo: HomeCombo }) {
   return (
     <Link
-      href={`/combo/${combo._id}`}
+      href={`/combo/${combo.number ?? combo._id}`}
       className="block rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/50 hover:bg-accent"
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="font-semibold">{combo.name}</span>
+        <span className="font-semibold">{combo.number ? `${combo.number}번 콤보` : '콤보'}</span>
         {combo.saveCount > 0 && <span className="shrink-0 text-xs text-muted-foreground">저장 {combo.saveCount}</span>}
       </div>
       <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{combo.chain.join(' → ')}</p>

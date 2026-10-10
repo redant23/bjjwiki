@@ -9,7 +9,6 @@ import {
   type SearchComboInput,
   type SearchTechniqueInput,
 } from '@/lib/search';
-import { comboGearLabel, isComboGearType } from '@/lib/combo-type';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -33,6 +32,12 @@ const MAX_COMBOS = 10;
 function techniqueHref(t: SearchTechniqueInput) {
   return `/technique/${[...(t.pathSlugs || []), t.slug].join('/')}`;
 }
+
+function comboHref(c: SearchComboInput) {
+  return c.number ? `/combo/${c.number}` : `/combo/pending/${c._id}`;
+}
+
+const GEAR_LABEL: Record<string, string> = { gi: '기', nogi: '노기' };
 
 export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState('');
@@ -104,10 +109,21 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const shownTechniques = results.techniques.slice(0, MAX_TECHNIQUES);
   const shownCombos = results.combos.slice(0, MAX_COMBOS);
-  const flatItems: FlatItem[] = [
-    ...shownTechniques.map(({ technique }) => ({ key: `t-${technique._id}`, href: techniqueHref(technique) })),
-    ...shownCombos.map(({ combo }) => ({ key: `c-${combo._id}`, href: `/combo/${combo._id}` })),
-  ];
+  // 번호 질의("14번 콤보")로 걸린 콤보는 기술보다 위, 목록 맨 앞에 둔다.
+  const comboFirst = !!shownCombos[0]?.byNumber;
+  const techniqueItems: FlatItem[] = shownTechniques.map(({ technique }) => ({
+    key: `t-${technique._id}`,
+    href: techniqueHref(technique),
+  }));
+  const comboItems: FlatItem[] = shownCombos.map(({ combo }) => ({
+    key: `c-${combo._id}`,
+    href: comboHref(combo),
+  }));
+  const flatItems: FlatItem[] = comboFirst
+    ? [...comboItems, ...techniqueItems]
+    : [...techniqueItems, ...comboItems];
+  const techniqueOffset = comboFirst ? shownCombos.length : 0;
+  const comboOffset = comboFirst ? 0 : shownTechniques.length;
 
   useEffect(() => {
     listRef.current
@@ -134,9 +150,11 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       // 디바운스가 끝나기 전에 Enter를 눌러도 지금 입력 기준 결과로 이동한다.
       if (query !== debouncedQuery && index) {
         const fresh = search(index, query);
-        const first = fresh.techniques[0]
-          ? techniqueHref(fresh.techniques[0].technique)
-          : fresh.combos[0] && `/combo/${fresh.combos[0].combo._id}`;
+        const first = fresh.combos[0]?.byNumber
+          ? comboHref(fresh.combos[0].combo)
+          : fresh.techniques[0]
+            ? techniqueHref(fresh.techniques[0].technique)
+            : fresh.combos[0] && comboHref(fresh.combos[0].combo);
         if (first) handleSelect(first);
         return;
       }
@@ -156,6 +174,49 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }`;
   const nameClass = (i: number) =>
     `font-medium transition-colors group-hover:text-primary ${i === activeIndex ? 'text-primary' : 'text-foreground'}`;
+
+  const comboBlock = shownCombos.length > 0 && (
+                <div className="space-y-1">
+                  <div className="px-4 pt-1 text-xs font-semibold text-muted-foreground">콤보</div>
+                  {shownCombos.map(({ combo, chain, matchedTechnique, matchedPerformer, byNumber }, j) => {
+                    const i = comboOffset + j;
+                    return (
+                      <button
+                        key={combo._id}
+                        data-index={i}
+                        role="option"
+                        aria-selected={i === activeIndex}
+                        onMouseMove={() => setActiveIndex(i)}
+                        onClick={() => handleSelect(comboHref(combo))}
+                        className={itemClass(i)}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className={nameClass(i)}>
+                            <span className="mr-2 rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
+                              {combo.number ? `#${combo.number}` : '승인 대기'}
+                            </span>
+                            {chain.join(' → ')}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {byNumber
+                              ? `${combo.number}번 콤보`
+                              : matchedPerformer
+                                ? `시전자: ${matchedPerformer}`
+                                : matchedTechnique
+                                  ? `포함 기술: ${matchedTechnique}`
+                                  : `기술 ${combo.techniques.length}개`}
+                          </div>
+                        </div>
+                        {(combo.gearTypes ?? []).map((g) => (
+                          <span key={g} className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">
+                            {GEAR_LABEL[g] ?? g}
+                          </span>
+                        ))}
+                      </button>
+                    );
+                  })}
+                </div>
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-20 px-4">
@@ -194,10 +255,13 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         <div ref={listRef} id="search-results" role="listbox" className="overflow-y-auto p-2">
           {hasResults ? (
             <div className="space-y-3">
+              {comboFirst && comboBlock}
               {shownTechniques.length > 0 && (
                 <div className="space-y-1">
                   <div className="px-4 pt-1 text-xs font-semibold text-muted-foreground">기술</div>
-                  {shownTechniques.map(({ technique }, i) => (
+                  {shownTechniques.map(({ technique }, idx) => {
+                    const i = techniqueOffset + idx;
+                    return (
                     <button
                       key={technique._id}
                       data-index={i}
@@ -220,41 +284,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                         Level {(technique.pathSlugs?.length ?? 0) + 1}
                       </div>
                     </button>
-                  ))}
-                </div>
-              )}
-
-              {shownCombos.length > 0 && (
-                <div className="space-y-1">
-                  <div className="px-4 pt-1 text-xs font-semibold text-muted-foreground">콤보</div>
-                  {shownCombos.map(({ combo, matchedTechnique }, j) => {
-                    const i = shownTechniques.length + j;
-                    return (
-                      <button
-                        key={combo._id}
-                        data-index={i}
-                        role="option"
-                        aria-selected={i === activeIndex}
-                        onMouseMove={() => setActiveIndex(i)}
-                        onClick={() => handleSelect(`/combo/${combo._id}`)}
-                        className={itemClass(i)}
-                      >
-                        <div className="flex-1">
-                          <div className={nameClass(i)}>{combo.name}</div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {matchedTechnique ? `포함 기술: ${matchedTechnique}` : `기술 ${combo.techniques.length}개`}
-                          </div>
-                        </div>
-                        {isComboGearType(combo.gearType) && (
-                          <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] text-muted-foreground">
-                            {comboGearLabel(combo.gearType)}
-                          </span>
-                        )}
-                      </button>
                     );
                   })}
                 </div>
               )}
+
+              {!comboFirst && comboBlock}
             </div>
           ) : hasQuery ? (
             <div className="py-12 text-center text-muted-foreground">

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db';
 import Technique from '@/models/Technique';
 import Combo from '@/models/Combo';
+import { PUBLISHED_FILTER } from '@/lib/combo-service';
 
 const MAX_COMBOS = 6;
 
@@ -29,11 +30,11 @@ export async function GET(
         .sort({ order: 1, 'name.ko': 1 })
         .select('name slug pathSlugs primaryRole thumbnailUrl')
         .lean(),
-      Combo.find({ techniques: technique._id })
+      Combo.find({ techniques: technique._id, ...PUBLISHED_FILTER })
         .sort({ saveCount: -1, createdAt: -1 })
         .limit(MAX_COMBOS)
         .populate('techniques', 'name slug pathSlugs')
-        .select('name techniques saveCount')
+        .select('number techniques saveCount')
         .lean(),
     ]);
 
@@ -55,7 +56,7 @@ export async function GET(
         next: index >= 0 && index < siblings.length - 1 ? siblings[index + 1] : null,
         combos: comboDocs.map((c) => ({
           _id: c._id.toString(),
-          name: c.name as string,
+          number: typeof c.number === 'number' ? c.number : null,
           saveCount: c.saveCount ?? 0,
           // 콤보에 등록된 순서 그대로의 기술 체인 (삭제된 기술은 populate에서 빠진다)
           chain: (c.techniques as unknown as Array<{
